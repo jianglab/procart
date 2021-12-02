@@ -1,5 +1,5 @@
 streamlit==1.2.0
-atomium==1.0.11
+atomium==1.0.10
 numpy==1.21.2
 bokeh==2.4.1
 qrcode==7.3.1
