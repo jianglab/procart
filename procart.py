@@ -49,7 +49,7 @@ def main():
     st.set_page_config(page_title=title, layout="wide")
 
     session_state = st.session_state
-    if "color_scheme" not in session_state:  # only run once at the start of the session
+    if "title" not in session_state:  # only run once at the start of the session
         st.elements.utils._shown_default_value_warning = True
         parse_query_parameters()
     st.title(st.session_state.title)
@@ -429,25 +429,26 @@ def charge_mapping(aa, color_scheme="Cinema"):
         elif aa in 'K R'.split(): return 'blue'
         return 'white'
 
+int_types = "backbone_line_thickness center_to_com circle_line_thickness input_mode letter_size plot_width plot_z_dist random_pdb_id share_url show_axes show_qr show_residue_circles strand_line_thickness transparent_background vflip".split()
+float_types = "circle_opaque circle_size_scale rotz".split()
 def set_query_parameters():
     d = {}
     for k in sorted(st.session_state.keys()):
         v = st.session_state[k]
-        if isinstance(v, bool): v=int(v)
+        if k in int_types: v=int(v)
+        elif k in float_types: v=float(v)
         d[k] = v
     st.experimental_set_query_params(**d)
 
 def parse_query_parameters():
     query_params = st.experimental_get_query_params()
-    int_types = "backbone_line_thickness center_to_com circle_line_thickness input_mode letter_size plot_width plot_z_dist random_pdb_id share_url show_axes show_qr show_residue_circles strand_line_thickness transparent_background vflip".split()
-    float_types = "circle_opaque circle_size_scale rotz".split()
     for attr in query_params:
         if attr == "title":
             st.session_state.title = query_params[attr][0]
         elif attr == "chain_ids":
             st.session_state.chain_ids = query_params[attr]
         elif attr in int_types:
-            st.session_state[attr] = int(query_params[attr][0])
+            st.session_state[attr] = int(float(query_params[attr][0]))
         elif attr in float_types:
             st.session_state[attr] = float(query_params[attr][0])
         else:
