@@ -40,6 +40,7 @@ import_with_auto_install(required_packages)
 
 import streamlit as st
 import numpy as np
+import atomium
 
 #from memory_profiler import profile
 #@profile(precision=4)
@@ -111,7 +112,7 @@ def main():
 
         if pdb is None: return
 
-        model = pdb.models[0]
+        model = pdb.model
         valid_chain_ids = sorted([chain.id for chain in model.chains()])
         if len(valid_chain_ids)<1:
             st.warning(f"No protein chain in the structure")
@@ -122,10 +123,26 @@ def main():
         else:
             chain_ids = valid_chain_ids
 
-        rotz = st.number_input('Rotation around Z-axis (°)', value=0.0, min_value=-180.0, max_value=180., step=1.0, key="rotz")
+        if len(chain_ids)<1:
+            st.warning("Please select at least one chain")
+            return
+
+        chains = []
+        for cid in chain_ids:
+            chain = model.chain(cid)
+            if chain is None:
+                st.warning(f"Chain {cid} cannot be found")
+            else:
+                chains.append((cid, chain.copy()))
+        
+        model = atomium.structures.Model(*[chain[1] for chain in chains])
+        rotz_auto = round(auto_rotation_angle(model), 1)
+        rotz = st.number_input('Rotation around Z-axis (°)', value=rotz_auto, min_value=-180.0, max_value=180., step=1.0, key="rotz")
+        if rotz:
+            model.rotate(angle=np.deg2rad(rotz), axis='z')
+
         vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
         show_residue_circles = st.checkbox('Show residues in circles', value=True, key="show_residue_circles")
-
         plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=True, key="plot_z_dist")
 
         if show_residue_circles:
@@ -160,17 +177,6 @@ def main():
     if center_to_com:
         com_model = model.center_of_mass
         model.translate(dx=-com_model[0], dy=-com_model[1], dz=-com_model[2])
-
-    if rotz:
-        model.rotate(angle=np.deg2rad(rotz), axis='z')
-
-    chains = []
-    for cid in chain_ids:
-        chain = model.chain(cid)
-        if chain is None:
-            st.warning(f"Chain {cid} cannot be found")
-        else:
-            chains.append((cid, chain))
 
     from bokeh.plotting import figure
     from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead
@@ -267,75 +273,75 @@ def main():
             white_mask = np.where(color=="white")
             color[white_mask] = "grey"
 
-        strand_body_x0 = []
-        strand_body_y0 = []
-        strand_body_x1 = []
-        strand_body_y1 = []
-        strand_last_x0 = []
-        strand_last_y0 = []
-        strand_last_x1 = []
-        strand_last_y1 = []
-        nonstrand_x0 = []
-        nonstrand_y0 = []
-        nonstrand_x1 = []
-        nonstrand_y1 = []
+            strand_body_x0 = []
+            strand_body_y0 = []
+            strand_body_x1 = []
+            strand_body_y1 = []
+            strand_last_x0 = []
+            strand_last_y0 = []
+            strand_last_x1 = []
+            strand_last_y1 = []
+            nonstrand_x0 = []
+            nonstrand_y0 = []
+            nonstrand_x1 = []
+            nonstrand_y1 = []
 
-        for i in range(len(strand)):
-            ca_dist = np.linalg.norm(ca_pos[i]-ca_pos[i-1])
-            if 3.5<ca_dist<4.1:
-                if strand[i]:
-                    if i==len(strand)-1 or (i<len(strand)-1 and not strand[i+1]): # end of a strand
-                        strand_last_x0.append( ca_pos_xz[i-1,0] )
-                        strand_last_y0.append( ca_pos_xz[i-1,1] )
-                        strand_last_x1.append( ca_pos_xz[i,0] )
-                        strand_last_y1.append( ca_pos_xz[i,1] )
+            for i in range(len(strand)):
+                ca_dist = np.linalg.norm(ca_pos[i]-ca_pos[i-1])
+                if 3.5<ca_dist<4.1:
+                    if strand[i]:
+                        if i==len(strand)-1 or (i<len(strand)-1 and not strand[i+1]): # end of a strand
+                            strand_last_x0.append( ca_pos_xz[i-1,0] )
+                            strand_last_y0.append( ca_pos_xz[i-1,1] )
+                            strand_last_x1.append( ca_pos_xz[i,0] )
+                            strand_last_y1.append( ca_pos_xz[i,1] )
+                        else:
+                            strand_body_x0.append( ca_pos_xz[i-1,0] )
+                            strand_body_y0.append( ca_pos_xz[i-1,1] )
+                            strand_body_x1.append( ca_pos_xz[i,0] )
+                            strand_body_y1.append( ca_pos_xz[i,1] )
                     else:
-                        strand_body_x0.append( ca_pos_xz[i-1,0] )
-                        strand_body_y0.append( ca_pos_xz[i-1,1] )
-                        strand_body_x1.append( ca_pos_xz[i,0] )
-                        strand_body_y1.append( ca_pos_xz[i,1] )
-                else:
-                    nonstrand_x0.append( ca_pos_xz[i-1,0] )
-                    nonstrand_y0.append( ca_pos_xz[i-1,1] )
-                    nonstrand_x1.append( ca_pos_xz[i,0] )
-                    nonstrand_y1.append( ca_pos_xz[i,1] )
+                        nonstrand_x0.append( ca_pos_xz[i-1,0] )
+                        nonstrand_y0.append( ca_pos_xz[i-1,1] )
+                        nonstrand_x1.append( ca_pos_xz[i,0] )
+                        nonstrand_y1.append( ca_pos_xz[i,1] )
 
-        tools = 'box_zoom,crosshair,hover,pan,reset,save,wheel_zoom'
-        tooltips = [("Chain length", "$x{0.0}Å"), ("Ca Z", "$y{0.00}Å"),]
-        ymin = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).min())-1
-        ymax = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).max())+1
-        fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z poistion (Å)", y_range=(ymin, ymax), tools=tools, tooltips=tooltips, plot_width=plot_width, match_aspect=True)
-        fig.xgrid.visible = False
-        fig.ygrid.visible = False
-        if not show_axes:
-            fig.xaxis.visible = False
-            fig.yaxis.visible = False 
-        if transparent_background:
-            fig.background_fill_color = None
-        fig.border_fill_color = None
-        fig.outline_line_color = None
+            tools = 'box_zoom,crosshair,hover,pan,reset,save,wheel_zoom'
+            tooltips = [("Chain length", "$x{0.0}Å"), ("Ca Z", "$y{0.00}Å"),]
+            ymin = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).min())-1
+            ymax = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).max())+1
+            fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z poistion (Å)", y_range=(ymin, ymax), tools=tools, tooltips=tooltips, plot_width=plot_width, match_aspect=True)
+            fig.xgrid.visible = False
+            fig.ygrid.visible = False
+            if not show_axes:
+                fig.xaxis.visible = False
+                fig.yaxis.visible = False 
+            if transparent_background:
+                fig.background_fill_color = None
+            fig.border_fill_color = None
+            fig.outline_line_color = None
 
-        hline = Span(location=0, dimension='width', line_dash='dashed', line_color='black', line_width=1)
-        fig.add_layout(hline)
+            hline = Span(location=0, dimension='width', line_dash='dashed', line_color='black', line_width=1)
+            fig.add_layout(hline)
 
-        line_color = 'grey'
-        source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
-        fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_line_thickness, line_color=line_color)
+            line_color = 'grey'
+            source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_line_thickness, line_color=line_color)
 
-        line_color = 'black'
-        source = ColumnDataSource({'x0':strand_body_x0, 'y0':strand_body_y0, 'x1':strand_body_x1, 'y1':strand_body_y1})
-        fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_line_thickness, line_color=line_color)
+            line_color = 'black'
+            source = ColumnDataSource({'x0':strand_body_x0, 'y0':strand_body_y0, 'x1':strand_body_x1, 'y1':strand_body_y1})
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_line_thickness, line_color=line_color)
 
-        source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
-        arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_line_thickness, line_color=line_color, end=VeeHead(size=strand_line_thickness*3, line_color="black", fill_color="black", line_width=strand_line_thickness))
-        arrow.level = 'underlay'
-        fig.add_layout(arrow)
+            source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
+            arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_line_thickness, line_color=line_color, end=VeeHead(size=strand_line_thickness*3, line_color="black", fill_color="black", line_width=strand_line_thickness))
+            arrow.level = 'underlay'
+            fig.add_layout(arrow)
 
-        source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z':ca_pos_xz[:,1], 'com_x':com_xz[:,0], 'com_z':com_xz[:,1], 'rog':rog, 'color':color, 'strand':strand})
-        fig.scatter(source=source, x='ca_x', y='ca_z')
-        if show_residue_circles:
-            fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
-        figs.append(fig)
+            source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z':ca_pos_xz[:,1], 'com_x':com_xz[:,0], 'com_z':com_xz[:,1], 'rog':rog, 'color':color, 'strand':strand})
+            fig.scatter(source=source, x='ca_x', y='ca_z')
+            if show_residue_circles:
+                fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
+            figs.append(fig)
         if len(figs)>1:
             from bokeh.layouts import column
             figs_all = column(children=figs)
@@ -385,6 +391,18 @@ def unwrap(ca, com): # unwrap the chain to be along +x axis
     ca_xz[:, 1] -= z_mean
     com_xz[:, 1] -= z_mean
     return ca_xz, com_xz  
+
+def auto_rotation_angle(model):
+    com = model.center_of_mass[:2]
+    ca_atoms = model.atoms(name__regex='CA')
+    dxy = np.array([atom.location[:2]-com for atom in ca_atoms])
+    inertia = np.dot(dxy.transpose(), dxy)
+    e_values, e_vectors = np.linalg.eig(inertia)
+    order = np.argsort(e_values)[::-1]
+    e_values = e_values[order]
+    e_vectors = e_vectors[:, order].transpose()
+    angle = np.rad2deg(np.arctan2(e_vectors[0, 1], e_vectors[0, 0]))
+    return -angle
 
 def charge_mapping(aa, color_scheme="Cinema"):
     # https://www.bioinformatics.nl/~berndb/aacolour.html
