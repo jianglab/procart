@@ -179,11 +179,9 @@ def main():
         model.translate(dx=-com_model[0], dy=-com_model[1], dz=-com_model[2])
 
     from bokeh.plotting import figure
-    from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead
+    from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead, HoverTool
 
-    tools = 'box_zoom,crosshair,hover,pan,reset,save,wheel_zoom'
-    tooltips = [("X", "$x{0.0}Å"), ("Y", "$y{0.0}Å"),]
-    fig = figure(tools=tools, tooltips=tooltips, plot_width=plot_width, x_axis_label=None, y_axis_label=None, match_aspect=True)
+    fig = figure(plot_width=plot_width, x_axis_label=None, y_axis_label=None, match_aspect=True)
     fig.xgrid.visible = False
     fig.ygrid.visible = False
     if not show_axes:
@@ -196,6 +194,7 @@ def main():
 
     for cid, chain in chains:
         residues = [res for res in chain.residues() if res.atoms(name__regex='CA')]
+        res_ids = [f"{res.id}{res.code}" for res in residues]
         seq = [res.code for res in residues]
         ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
         com = np.array([res.center_of_mass for res in residues])
@@ -239,6 +238,12 @@ def main():
                     nonstrand_x1.append( ca_pos[i,0] )
                     nonstrand_y1.append( ca_pos[i,1] )
 
+
+        source = ColumnDataSource({'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'res_id':res_ids})
+        scatter = fig.scatter(source=source, x='ca_x', y='ca_y')
+        hover = HoverTool(renderers=[scatter], tooltips=[('x', '@ca_x'), ('y', '@ca_y'), ('residue', '@res_id')])
+        fig.add_tools(hover)
+
         line_color = 'grey'
         source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
         fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_line_thickness, line_color=line_color)
@@ -253,8 +258,10 @@ def main():
         fig.add_layout(arrow)
 
         if show_residue_circles:
-            source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'com_x':com[:,0], 'com_y':com[:,1], 'rog':rog, 'color':color, 'strand':strand})
-            fig.circle(source=source, x='com_x', y='com_y', radius='rog', radius_units='data', line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque)
+            source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'com_x':com[:,0], 'com_y':com[:,1], 'rog':rog, 'color':color, 'strand':strand, 'res_id':res_ids})
+            circle=fig.circle(source=source, x='com_x', y='com_y', radius='rog', radius_units='data', line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque)
+            hover = HoverTool(renderers=[circle], tooltips=[('x', '@ca_x'), ('y', '@ca_y'), ('residue', '@res_id')])
+            fig.add_tools(hover)
             fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
     
     st.bokeh_chart(fig, use_container_width=False)
@@ -263,6 +270,7 @@ def main():
         figs = []
         for cid, chain in chains:
             residues = [res for res in chain.residues() if res.atoms(name__regex='CA')]
+            res_ids = [f"{res.id}{res.code}" for res in residues]
             seq = [res.code for res in residues]
             ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
             com = np.array([res.center_of_mass for res in residues])
@@ -306,11 +314,9 @@ def main():
                         nonstrand_x1.append( ca_pos_xz[i,0] )
                         nonstrand_y1.append( ca_pos_xz[i,1] )
 
-            tools = 'box_zoom,crosshair,hover,pan,reset,save,wheel_zoom'
-            tooltips = [("Chain length", "$x{0.0}Å"), ("Ca Z", "$y{0.00}Å"),]
             ymin = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).min())-1
             ymax = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).max())+1
-            fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z poistion (Å)", y_range=(ymin, ymax), tools=tools, tooltips=tooltips, plot_width=plot_width, match_aspect=True)
+            fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z poistion (Å)", y_range=(ymin, ymax), plot_width=plot_width, match_aspect=True)
             fig.xgrid.visible = False
             fig.ygrid.visible = False
             if not show_axes:
@@ -337,10 +343,15 @@ def main():
             arrow.level = 'underlay'
             fig.add_layout(arrow)
 
-            source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z':ca_pos_xz[:,1], 'com_x':com_xz[:,0], 'com_z':com_xz[:,1], 'rog':rog, 'color':color, 'strand':strand})
-            fig.scatter(source=source, x='ca_x', y='ca_z')
+            source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z':ca_pos_xz[:,1], 'com_x':com_xz[:,0], 'com_z':com_xz[:,1], 'rog':rog, 'color':color, 'strand':strand, 'res_id':res_ids})
+            scatter=fig.scatter(source=source, x='ca_x', y='ca_z')
+            hover = HoverTool(renderers=[scatter], tooltips=[('x', '@ca_x'), ('y', '@ca_z'), ('residue', '@res_id')])
+            fig.add_tools(hover)
+
             if show_residue_circles:
-                fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
+                text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
+                hover = HoverTool(renderers=[text], tooltips=[('x', '@ca_x'), ('y', '@ca_z'), ('residue', '@res_id')])
+                fig.add_tools(hover)
             figs.append(fig)
         if len(figs)>1:
             from bokeh.layouts import column
