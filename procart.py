@@ -241,7 +241,7 @@ def main():
 
         source = ColumnDataSource({'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'res_id':res_ids})
         scatter = fig.scatter(source=source, x='ca_x', y='ca_y')
-        hover = HoverTool(renderers=[scatter], tooltips=[('x', '@ca_x'), ('y', '@ca_y'), ('residue', '@res_id')])
+        hover = HoverTool(renderers=[scatter], tooltips=[('Ca X', '@ca_x{0.00}Å'), ('Ca Y', '@ca_y{0.00}Å'), ('residue', '@res_id')])
         fig.add_tools(hover)
 
         line_color = 'grey'
@@ -260,7 +260,7 @@ def main():
         if show_residue_circles:
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'com_x':com[:,0], 'com_y':com[:,1], 'rog':rog, 'color':color, 'strand':strand, 'res_id':res_ids})
             circle=fig.circle(source=source, x='com_x', y='com_y', radius='rog', radius_units='data', line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque)
-            hover = HoverTool(renderers=[circle], tooltips=[('x', '@ca_x'), ('y', '@ca_y'), ('residue', '@res_id')])
+            hover = HoverTool(renderers=[circle], tooltips=[('COM X', '@com_x{0.00}Å'), ('COM Y', '@com_y{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
             fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
     
@@ -345,12 +345,12 @@ def main():
 
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z':ca_pos_xz[:,1], 'com_x':com_xz[:,0], 'com_z':com_xz[:,1], 'rog':rog, 'color':color, 'strand':strand, 'res_id':res_ids})
             scatter=fig.scatter(source=source, x='ca_x', y='ca_z')
-            hover = HoverTool(renderers=[scatter], tooltips=[('x', '@ca_x'), ('y', '@ca_z'), ('residue', '@res_id')])
+            hover = HoverTool(renderers=[scatter], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
 
             if show_residue_circles:
                 text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
-                hover = HoverTool(renderers=[text], tooltips=[('x', '@ca_x'), ('y', '@ca_z'), ('residue', '@res_id')])
+                hover = HoverTool(renderers=[text], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
                 fig.add_tools(hover)
             figs.append(fig)
         if len(figs)>1:
