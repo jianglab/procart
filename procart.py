@@ -143,7 +143,7 @@ def main():
 
         vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
         show_residue_circles = st.checkbox('Show residues in circles', value=True, key="show_residue_circles")
-        plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=True, key="plot_z_dist")
+        plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=False, key="plot_z_dist")
 
         if show_residue_circles:
             color_scheme = st.radio('Choose a coloring scheme:', options=["Cinema", "Lesk", "Clustal"], key="color_scheme")
