@@ -151,7 +151,13 @@ def main():
             color_scheme = "Cinema"
 
         with st.expander(label=f"Additional settings", expanded=False):
-            center_to_com = st.checkbox('Center the structure', value=False, key="center_to_com")
+            center_xy = st.checkbox('Center the structure in XY plane', value=False, key="center_xy")
+            if plot_z_dist:
+                center_z = st.checkbox('Center the structure in Z direction', value=False, key="center_z")
+                one_z_plot = st.checkbox('Plot all Z-plots in one figure', value=True, key="one_z_plot")
+            else:
+                center_z = False
+                one_z_plot = False
             plot_width = int(st.number_input('Plot width (pixel)', value=1000, min_value=100, step=10, key="plot_width"))
             if show_residue_circles:
                 circle_size_scale = st.number_input('Scale circles relative to the residue sizes', value=1.0, min_value=0.1, step=0.1, key="circle_size_scale")
@@ -174,7 +180,7 @@ def main():
         else:
             show_qr = False
 
-    if center_to_com:
+    if center_xy:
         com_model = model.center_of_mass
         model.translate(dx=-com_model[0], dy=-com_model[1], dz=-com_model[2])
 
@@ -268,13 +274,15 @@ def main():
 
     if plot_z_dist:
         figs = []
+        ymins = []
+        ymaxs = []
         for cid, chain in chains:
             residues = [res for res in chain.residues() if res.atoms(name__regex='CA')]
             res_ids = [f"{res.id}{res.code}" for res in residues]
             seq = [res.code for res in residues]
             ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
             com = np.array([res.center_of_mass for res in residues])
-            ca_pos_xz, com_xz = unwrap(ca_pos, com) # unwrap the chain to be along x-axis, z-values are preserved
+            ca_pos_xz, com_xz = unwrap(ca_pos, com, center_z) # unwrap the chain to be along x-axis, z-values are preserved
             rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
             strand = [res.strand for res in residues]
             color = np.array(list(map(charge_mapping, seq, [color_scheme]*len(seq))))
@@ -316,19 +324,25 @@ def main():
 
             ymin = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).min())-1
             ymax = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).max())+1
-            fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z poistion (Å)", y_range=(ymin, ymax), plot_width=plot_width, match_aspect=True)
-            fig.xgrid.visible = False
-            fig.ygrid.visible = False
-            if not show_axes:
-                fig.xaxis.visible = False
-                fig.yaxis.visible = False 
-            if transparent_background:
-                fig.background_fill_color = None
-            fig.border_fill_color = None
-            fig.outline_line_color = None
+            ymins.append(ymin)
+            ymaxs.append(ymax)
+            if one_z_plot and len(figs):
+                fig = figs[-1]
+            else:
+                fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z poistion (Å)", y_range=(ymin, ymax), plot_width=plot_width, match_aspect=True)
+                figs.append(fig)
+                fig.xgrid.visible = False
+                fig.ygrid.visible = False
+                if not show_axes:
+                    fig.xaxis.visible = False
+                    fig.yaxis.visible = False 
+                if transparent_background:
+                    fig.background_fill_color = None
+                fig.border_fill_color = None
+                fig.outline_line_color = None
 
-            hline = Span(location=0, dimension='width', line_dash='dashed', line_color='black', line_width=1)
-            fig.add_layout(hline)
+                hline = Span(location=0, dimension='width', line_dash='dashed', line_color='black', line_width=1)
+                fig.add_layout(hline)
 
             line_color = 'grey'
             source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
@@ -352,12 +366,15 @@ def main():
                 text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
                 hover = HoverTool(renderers=[text], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
                 fig.add_tools(hover)
-            figs.append(fig)
+            
         if len(figs)>1:
             from bokeh.layouts import column
             figs_all = column(children=figs)
             st.bokeh_chart(figs_all)
         elif len(figs)==1:
+            if one_z_plot and len(figs):
+                from bokeh.models import Range1d
+                figs[0].y_range=Range1d(min(ymins), max(ymaxs))
             st.bokeh_chart(figs[0])
 
     if share_url:
@@ -378,16 +395,17 @@ def main():
     """
     st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
 
-def unwrap(ca, com): # unwrap the chain to be along +x axis
+def unwrap(ca, com, center_z=False): # unwrap the chain to be along +x axis
     assert(len(ca)==len(com))
     n = len(com)
     ca_xz = np.zeros((n, 2), dtype=float)
     com_xz = np.zeros((n, 2), dtype=float)
+    ca_xz[:, 1] = ca[:, 2] # z -> z
+    com_xz[:, 1] = com[:, 2] # z -> z
     for i in range(1, n):
         ca_vec = ca[i]-ca[i-1]
         ca_vec_xy_len = np.linalg.norm(ca_vec[:2])
         ca_xz[i, 0] = ca_xz[i-1, 0] +  ca_vec_xy_len # x,y --> x
-        ca_xz[i, 1] = ca_xz[i-1, 1] + ca_vec[2] # z -> z
         ca_vec_xy_norm = ca_vec[:2]/ca_vec_xy_len
         if i==1:
             com_vec = com[i-1]-ca[i-1]
@@ -397,10 +415,10 @@ def unwrap(ca, com): # unwrap the chain to be along +x axis
         com_vec = com[i]-ca[i]
         com_x_proj = com_vec[0]*ca_vec_xy_norm[0] + com_vec[1]*ca_vec_xy_norm[1]
         com_xz[i, 0] = ca_xz[i, 0] + com_x_proj # x,y --> x
-        com_xz[i, 1] = ca_xz[i, 1] + com_vec[2] # x,y --> x   
-    z_mean = ca_xz[:, 1].mean()
-    ca_xz[:, 1] -= z_mean
-    com_xz[:, 1] -= z_mean
+    if center_z:
+        z_mean = ca_xz[:, 1].mean()
+        ca_xz[:, 1] -= z_mean
+        com_xz[:, 1] -= z_mean
     return ca_xz, com_xz  
 
 def auto_rotation_angle(model):
@@ -440,7 +458,7 @@ def charge_mapping(aa, color_scheme="Cinema"):
         elif aa in 'K R'.split(): return 'blue'
         return 'white'
 
-int_types = "backbone_line_thickness center_to_com circle_line_thickness input_mode letter_size plot_width plot_z_dist random_pdb_id share_url show_axes show_qr show_residue_circles strand_line_thickness transparent_background vflip".split()
+int_types = "backbone_line_thickness center_xy center_z circle_line_thickness input_mode letter_size one_z_plot plot_width plot_z_dist random_pdb_id share_url show_axes show_qr show_residue_circles strand_line_thickness transparent_background vflip".split()
 float_types = "circle_opaque circle_size_scale rotz".split()
 def set_query_parameters():
     d = {}
