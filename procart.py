@@ -180,9 +180,14 @@ def main():
         else:
             show_qr = False
 
-    if center_xy:
+    if center_xy or center_z:
         com_model = model.center_of_mass
-        model.translate(dx=-com_model[0], dy=-com_model[1], dz=-com_model[2])
+        dx = dy = dz = 0.0
+        if center_xy:
+            dx, dy = -com_model[:2]
+        if center_z:
+            dz = -com_model[2]
+        model.translate(dx=dx, dy=dy, dz=dz)
 
     from bokeh.plotting import figure
     from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead, HoverTool
@@ -282,7 +287,7 @@ def main():
             seq = [res.code for res in residues]
             ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
             com = np.array([res.center_of_mass for res in residues])
-            ca_pos_xz, com_xz = unwrap(ca_pos, com, center_z) # unwrap the chain to be along x-axis, z-values are preserved
+            ca_pos_xz, com_xz = unwrap(ca_pos, com, 0 if one_z_plot else center_z) # unwrap the chain to be along x-axis, z-values are preserved
             rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
             strand = [res.strand for res in residues]
             color = np.array(list(map(charge_mapping, seq, [color_scheme]*len(seq))))
