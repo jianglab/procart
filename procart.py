@@ -141,7 +141,6 @@ def main():
         if rotz:
             model.rotate(angle=np.deg2rad(rotz), axis='z')
 
-        vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
         show_residue_circles = st.checkbox('Show residues in circles', value=True, key="show_residue_circles")
         plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=False, key="plot_z_dist")
 
@@ -151,6 +150,7 @@ def main():
             color_scheme = "Cinema"
 
         with st.expander(label=f"Additional settings", expanded=False):
+            vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
             center_xy = st.checkbox('Center the structure in XY plane', value=False, key="center_xy")
             if plot_z_dist:
                 center_z = st.checkbox('Center the structure in Z direction', value=False, key="center_z")
@@ -158,6 +158,8 @@ def main():
             else:
                 center_z = False
                 one_z_plot = False
+            transparent_background = st.checkbox('Set background transparent', value=True, key="transparent_background")
+            show_axes = st.checkbox('Show the axes', value=True, key="show_axes")
             plot_width = int(st.number_input('Plot width (pixel)', value=1000, min_value=100, step=10, key="plot_width"))
             if show_residue_circles:
                 circle_size_scale = st.number_input('Scale circles relative to the residue sizes', value=1.0, min_value=0.1, step=0.1, key="circle_size_scale")
@@ -171,8 +173,6 @@ def main():
                 letter_size = 10
             backbone_line_thickness = int(st.number_input('Backbone line thickness (pixel)', value=2, min_value=0, step=1, key="backbone_line_thickness"))
             strand_line_thickness = int(st.number_input('Strand line thickness (pixel)', value=4, min_value=0, step=1, key="strand_line_thickness"))
-            transparent_background = st.checkbox('Set background transparent', value=True, key="transparent_background")
-            show_axes = st.checkbox('Show the axes', value=True, key="show_axes")
 
         share_url = st.checkbox('Show sharable URL', value=False, help="Include relevant parameters in the browser URL to allow you to share the URL and reproduce the plots", key="share_url")
         if share_url:
@@ -458,14 +458,21 @@ def charge_mapping(aa, color_scheme="Cinema"):
         elif aa in 'K R'.split(): return 'blue'
         return 'white'
 
-int_types = "backbone_line_thickness center_xy center_z circle_line_thickness input_mode letter_size one_z_plot plot_width plot_z_dist random_pdb_id share_url show_axes show_qr show_residue_circles strand_line_thickness transparent_background vflip".split()
-float_types = "circle_opaque circle_size_scale rotz".split()
+int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=1, show_axes=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0)
+float_types = dict(circle_opaque=0.5, circle_size_scale=1.0, rotz=0.0)
+other_types = dict(chain_ids=['A'], color_scheme="Cinema", title="ProCart")
 def set_query_parameters():
     d = {}
     for k in sorted(st.session_state.keys()):
         v = st.session_state[k]
-        if k in int_types: v=int(v)
-        elif k in float_types: v=float(v)
+        if k in int_types:
+            v=int(v)
+            if v==int_types[k]: continue
+        elif k in float_types: 
+            v=float(v)
+            if v==float_types[k]: continue
+        elif k in other_types:
+            if v==other_types[k]: continue
         d[k] = v
     st.experimental_set_query_params(**d)
 
