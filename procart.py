@@ -72,7 +72,6 @@ def main():
             url_default = "https://files.rcsb.org/download/7MKH.pdb"
             help = "An online url (http:// or ftp://) or a local file path (/path/to/your/structure.pdb)"
             url = st.text_input(label="Input the url of a PDB file:", value=url_default, help=help, key="url")
-            url = get_direct_url(url)    # convert cloud drive indirect url to direct url
             with st.spinner(f'Downloading {url.strip()}'):
                 pdb = get_model_from_url(url.strip())
         elif input_mode == 2:
@@ -531,8 +530,9 @@ def get_model_from_pdb(pdb_id):
 
 @st.experimental_singleton(show_spinner=False, suppress_st_warning=True)
 def get_model_from_url(url):
+    url_final = get_direct_url(url)    # convert cloud drive indirect url to direct url
     ds = np.DataSource(None)
-    if not ds.exists(url):
+    if not ds.exists(url_final):
         st.error(f"ERROR: {url} could not be downloaded. If this url points to a cloud drive file, make sure the link is a direct download link instead of a link for preview")
         st.stop()
     with ds.open(url) as fp:
