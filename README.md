@@ -9,6 +9,7 @@ Click the link (<a href="https://protein-structure-procart.herokuapp.com">ProCar
 While the atomic structures of amyloid fibrils, for example, [the structure of Tau filaments from Alzheimer’s disease](https://www.nature.com/articles/nature23002#Fig3) and [the structure of Tau filaments in Prion protein amyloidoses](https://link.springer.com/article/10.1007%2Fs00401-021-02336-w#Fig4), are often presented nicely in XY plane as colored circles around line segments through the Cα atoms, the figures were manually drawn due to the lack of an automated graphic display tool. To eliminate the tedious manual process and to be more quantitative with the positions and sizes of different residues for our new structures of TMEM106B filaments from MSTD, we developed the ProCart method originally as [a Google Colab notebook](https://colab.research.google.com/drive/10q6qJyccMtJlNWn-7I49g6sRwVf_IkWX?usp=sharing). To make the method more convenient and accessible to all users, we then further developed it into a Web app with some nice features listed below:
 ## Features
 * Multiple methods to input an atomic model: upload from your local disk, a URL, or a PDB ID
+* Automatically rotate the model around Z-axis to orient its longest direction along X-axis
 * The backbone is represented as thin line segments connected at the Cα atoms
 * The β-strands are represented by thicker lines and an arrow ended at the last residue of the strand
 * You can choose a coloring scheme from [three choices (Cinema, Lesk, and Clustal)](https://www.bioinformatics.nl/~berndb/aacolour.html)
