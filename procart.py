@@ -150,6 +150,7 @@ def main():
             color_scheme = "Cinema"
 
         with st.expander(label=f"Additional settings", expanded=False):
+            show_aa_indices = st.checkbox('Show amino acid indices', value=True, key="show_aa_indices")
             vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
             center_xy = st.checkbox('Center the structure in XY plane', value=False, key="center_xy")
             if plot_z_dist:
@@ -274,6 +275,21 @@ def main():
             hover = HoverTool(renderers=[circle], tooltips=[('COM X', '@com_x{0.00}Å'), ('COM Y', '@com_y{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
             fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
+
+        if show_aa_indices:
+            aa_mask = [ ri for ri, res in enumerate(residues) if int(res.id.split('.')[-1])%10==0 ]
+            if 0 not in aa_mask: aa_mask = [0] + aa_mask
+            if len(residues)-1 not in aa_mask: aa_mask += [len(residues)-1]
+            if show_residue_circles:
+                aa_indices = [residues[i].id.split('.')[-1] for i in aa_mask]
+                pos = com
+                offset = 1.7*letter_size
+            else: 
+                aa_indices = [f"{residues[i].code}{residues[i].id.split('.')[-1]}" for i in aa_mask]
+                pos = ca_pos
+                offset = 2*letter_size
+            source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
+            fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
     
     st.bokeh_chart(fig, use_container_width=False)
 
@@ -372,6 +388,21 @@ def main():
                 hover = HoverTool(renderers=[text], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
                 fig.add_tools(hover)
             
+            if show_aa_indices:
+                aa_mask = [ ri for ri, res in enumerate(residues) if int(res.id.split('.')[-1])%10==0 ]
+                if 0 not in aa_mask: aa_mask = [0] + aa_mask
+                if len(residues)-1 not in aa_mask: aa_mask += [len(residues)-1]
+                if show_residue_circles:
+                    aa_indices = [residues[i].id.split('.')[-1] for i in aa_mask]
+                    pos = ca_pos_xz
+                    offset = 2.75*letter_size
+                else: 
+                    aa_indices = [f"{residues[i].code}{residues[i].id.split('.')[-1]}" for i in aa_mask]
+                    pos = ca_pos_xz
+                    offset = 2*letter_size
+                source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
+                fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
+
         if len(figs)>1:
             from bokeh.layouts import column
             figs_all = column(children=figs)
@@ -463,7 +494,7 @@ def charge_mapping(aa, color_scheme="Cinema"):
         elif aa in 'K R'.split(): return 'blue'
         return 'white'
 
-int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=1, show_axes=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0)
+int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=1, show_aa_indices=1, show_axes=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0)
 float_types = dict(circle_opaque=0.5, circle_size_scale=1.0, rotz=0.0)
 other_types = dict(chain_ids=['A'], color_scheme="Cinema", title="ProCart")
 def set_query_parameters():
