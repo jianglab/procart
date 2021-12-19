@@ -191,9 +191,10 @@ def main():
         model.translate(dx=dx, dy=dy, dz=dz)
 
     from bokeh.plotting import figure
-    from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead, HoverTool
+    from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead, HoverTool, Range1d
 
-    fig = figure(plot_width=plot_width, x_axis_label=None, y_axis_label=None, match_aspect=True)
+    fig = figure(x_axis_label=None, y_axis_label=None, match_aspect=True)
+    fig.frame_width=plot_width
     fig.xgrid.visible = False
     fig.ygrid.visible = False
     if not show_axes:
@@ -204,6 +205,10 @@ def main():
         fig.border_fill_color = None
         fig.outline_line_color = None
 
+    xmins = []
+    xmaxs = []
+    ymins = []
+    ymaxs = []
     for cid, chain in chains:
         residues = [res for res in chain.residues() if res.atoms(name__regex='CA')]
         res_ids = [f"{res.id}{res.code}" for res in residues]
@@ -216,6 +221,15 @@ def main():
         rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
         strand = [res.strand for res in residues]
         color = np.array(list(map(charge_mapping, seq, [color_scheme]*len(seq))))
+
+        xmin = int(np.vstack((ca_pos[:,0], com[:,0]-rog)).min())-1
+        xmax = int(np.vstack((ca_pos[:,0], com[:,0]+rog)).max())+1
+        ymin = int(np.vstack((ca_pos[:,1], com[:,1]-rog)).min())-1
+        ymax = int(np.vstack((ca_pos[:,1], com[:,1]+rog)).max())+1
+        xmins.append(xmin)
+        xmaxs.append(xmax)
+        ymins.append(ymin)
+        ymaxs.append(ymax)
 
         strand_body_x0 = []
         strand_body_y0 = []
@@ -291,6 +305,9 @@ def main():
             source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
             fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
     
+    fig.x_range=Range1d(min(xmins)-5, max(xmaxs)+5)
+    fig.y_range=Range1d(min(ymins), max(ymaxs))
+    fig.frame_height = round(fig.frame_width * (fig.y_range.end-fig.y_range.start)/(fig.x_range.end-fig.x_range.start))
     st.bokeh_chart(fig, use_container_width=False)
 
     if plot_z_dist:
@@ -350,8 +367,9 @@ def main():
             if one_z_plot and len(figs):
                 fig = figs[-1]
             else:
-                fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z poistion (Å)", y_range=(ymin, ymax), plot_width=plot_width, match_aspect=True)
+                fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z poistion (Å)", y_range=(ymin, ymax), match_aspect=True)
                 figs.append(fig)
+                fig.frame_width=plot_width
                 fig.xgrid.visible = False
                 fig.ygrid.visible = False
                 if not show_axes:
@@ -409,7 +427,6 @@ def main():
             st.bokeh_chart(figs_all)
         elif len(figs)==1:
             if one_z_plot and len(figs):
-                from bokeh.models import Range1d
                 figs[0].y_range=Range1d(min(ymins), max(ymaxs))
             st.bokeh_chart(figs[0])
 
