@@ -151,6 +151,7 @@ def main():
 
         with st.expander(label=f"Additional settings", expanded=False):
             show_aa_indices = st.checkbox('Show amino acid indices', value=True, key="show_aa_indices")
+            show_gap = st.checkbox('Show gaps in the model', value=True, key="show_gap")
             vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
             center_xy = st.checkbox('Center the structure in XY plane', value=False, key="center_xy")
             if plot_z_dist:
@@ -161,6 +162,7 @@ def main():
                 one_z_plot = False
             transparent_background = st.checkbox('Set background transparent', value=True, key="transparent_background")
             show_axes = st.checkbox('Show the axes', value=True, key="show_axes")
+            warn_bad_ca_dist = st.checkbox('Warn bad Ca-Ca distances', value=True, key="warn_bad_ca_dist")
             plot_width = int(st.number_input('Plot width (pixel)', value=1000, min_value=100, step=10, key="plot_width"))
             if show_residue_circles:
                 circle_size_scale = st.number_input('Scale circles relative to the residue sizes', value=1.0, min_value=0.1, step=0.1, key="circle_size_scale")
@@ -209,6 +211,7 @@ def main():
     xmaxs = []
     ymins = []
     ymaxs = []
+    bad_ca_dist = []
     for cid, chain in chains:
         residues = [res for res in chain.residues() if res.atoms(name__regex='CA')]
         res_ids = [f"{res.id}{res.code}" for res in residues]
@@ -243,6 +246,10 @@ def main():
         nonstrand_y0 = []
         nonstrand_x1 = []
         nonstrand_y1 = []
+        gap_x0 = []
+        gap_y0 = []
+        gap_x1 = []
+        gap_y1 = []
 
         for i in range(len(strand)):
             ca_dist = np.linalg.norm(ca_pos[i]-ca_pos[i-1])
@@ -263,12 +270,26 @@ def main():
                     nonstrand_y0.append( ca_pos[i-1,1] )
                     nonstrand_x1.append( ca_pos[i,0] )
                     nonstrand_y1.append( ca_pos[i,1] )
-
+            else:
+                index_current = int(residues[i].id.split(".")[-1])
+                index_previous = int(residues[i-1].id.split(".")[-1])
+                if index_current-index_previous==1:
+                    bad_ca_dist.append( (ca_dist, res_ids[i-1], res_ids[i]) )
+                if index_current>index_previous:
+                    gap_x0.append( ca_pos[i-1,0] )
+                    gap_y0.append( ca_pos[i-1,1] )
+                    gap_x1.append( ca_pos[i,0] )
+                    gap_y1.append( ca_pos[i,1] )
 
         source = ColumnDataSource({'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'res_id':res_ids})
         scatter = fig.scatter(source=source, x='ca_x', y='ca_y')
         hover = HoverTool(renderers=[scatter], tooltips=[('Ca X', '@ca_x{0.00}Å'), ('Ca Y', '@ca_y{0.00}Å'), ('residue', '@res_id')])
         fig.add_tools(hover)
+
+        if show_gap:
+            line_color = 'grey'
+            source = ColumnDataSource({'x0':gap_x0, 'y0':gap_y0, 'x1':gap_x1, 'y1':gap_y1})
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_dash="dotted", line_width=backbone_line_thickness, line_color=line_color)
 
         line_color = 'grey'
         source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
@@ -304,6 +325,13 @@ def main():
                 offset = 2*letter_size
             source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
             fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
+
+    if warn_bad_ca_dist and len(bad_ca_dist):
+        bad_ca_dist.sort(key=lambda x: abs(x[0]-3.8), reverse=True)
+        pair = "pairs" if len(bad_ca_dist)>1 else "pair"
+        msg = f"Warning: {len(bad_ca_dist)} {pair} of neighboring residues with Cα-Cα distance significantly different from the expected distance (3.8Å):  \n"
+        msg += "  \n".join([f"{p[1]} - {p[2]}: {p[0]:.2f}Å (err = {p[0]-3.8:.2f}Å)" for p in bad_ca_dist])
+        st.warning(msg)
     
     fig.x_range=Range1d(min(xmins)-5, max(xmaxs)+5)
     fig.y_range=Range1d(min(ymins), max(ymaxs))
@@ -339,6 +367,10 @@ def main():
             nonstrand_y0 = []
             nonstrand_x1 = []
             nonstrand_y1 = []
+            gap_x0 = []
+            gap_y0 = []
+            gap_x1 = []
+            gap_y1 = []
 
             for i in range(len(strand)):
                 ca_dist = np.linalg.norm(ca_pos[i]-ca_pos[i-1])
@@ -359,6 +391,14 @@ def main():
                         nonstrand_y0.append( ca_pos_xz[i-1,1] )
                         nonstrand_x1.append( ca_pos_xz[i,0] )
                         nonstrand_y1.append( ca_pos_xz[i,1] )
+                else:
+                    index_current = int(residues[i].id.split(".")[-1])
+                    index_previous = int(residues[i-1].id.split(".")[-1])
+                    if index_current>index_previous:
+                        gap_x0.append( ca_pos_xz[i-1,0] )
+                        gap_y0.append( ca_pos_xz[i-1,1] )
+                        gap_x1.append( ca_pos_xz[i,0] )
+                        gap_y1.append( ca_pos_xz[i,1] )
 
             ymin = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).min())-1
             ymax = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).max())+1
@@ -382,6 +422,11 @@ def main():
 
                 hline = Span(location=0, dimension='width', line_dash='dashed', line_color='black', line_width=1)
                 fig.add_layout(hline)
+
+            if show_gap:
+                line_color = 'grey'
+                source = ColumnDataSource({'x0':gap_x0, 'y0':gap_y0, 'x1':gap_x1, 'y1':gap_y1})
+                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_dash="dotted", line_width=backbone_line_thickness, line_color=line_color)
 
             line_color = 'grey'
             source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
@@ -511,7 +556,7 @@ def charge_mapping(aa, color_scheme="Cinema"):
         elif aa in 'K R'.split(): return 'blue'
         return 'white'
 
-int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=1, show_aa_indices=1, show_axes=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0)
+int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=1, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.5, circle_size_scale=1.0, rotz=0.0)
 other_types = dict(chain_ids=['A'], color_scheme="Cinema", title="ProCart")
 def set_query_parameters():
