@@ -49,7 +49,7 @@ def main():
     st.set_page_config(page_title=title, layout="wide")
 
     session_state = st.session_state
-    if "title" not in session_state:  # only run once at the start of the session
+    if "input_mode" not in session_state:  # only run once at the start of the session
         st.elements.utils._shown_default_value_warning = True
         parse_query_parameters()
     st.title(st.session_state.title)
@@ -145,7 +145,12 @@ def main():
         plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=False, key="plot_z_dist")
 
         if show_residue_circles:
-            color_scheme = st.radio('Choose a coloring scheme:', options=["Cinema", "Lesk", "Clustal"], key="color_scheme")
+            color_scheme = st.radio('Choose a coloring scheme:', options=["Cinema", "Lesk", "Clustal", "Custom"], key="color_scheme")
+            if color_scheme == "Custom":
+                example = "white 1-10=red 17=blue L,W=yellow P=cyan"
+                example+= "\nA: white 1-10=red 17=blue L,W=yellow P=cyan"
+                example+= "\nA,B: white 1-10=red 17=blue L,W=yellow P=cyan"
+                custom_color_scheme_txt = st.text_area("Specify your color scheme:", value="", height=128, max_chars=None, key="custom_color_scheme", help=None, placeholder=example)
         else:
             color_scheme = "Cinema"
 
@@ -223,7 +228,11 @@ def main():
             com[:, 1] *= -1
         rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
         strand = [res.strand for res in residues]
-        color = np.array(list(map(charge_mapping, seq, [color_scheme]*len(seq))))
+        if color_scheme == "Custom":
+            res_num = [int(res.id.split(".")[-1]) for res in residues]
+            color = np.array(custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num))
+        else:
+            color = np.array(color_mapping(seq, color_scheme))
 
         xmin = int(np.vstack((ca_pos[:,0], com[:,0]-rog)).min())-1
         xmax = int(np.vstack((ca_pos[:,0], com[:,0]+rog)).max())+1
@@ -351,7 +360,11 @@ def main():
             ca_pos_xz, com_xz = unwrap(ca_pos, com, 0 if one_z_plot else center_z) # unwrap the chain to be along x-axis, z-values are preserved
             rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
             strand = [res.strand for res in residues]
-            color = np.array(list(map(charge_mapping, seq, [color_scheme]*len(seq))))
+            if color_scheme == "Custom":
+                res_num = [int(res.id.split(".")[-1]) for res in residues]
+                color = np.array(custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num))
+            else:
+                color = np.array(color_mapping(seq, color_scheme))
             white_mask = np.where(color=="white")
             color[white_mask] = "grey"
 
@@ -531,34 +544,79 @@ def auto_rotation_angle(model):
     angle = np.rad2deg(np.arctan2(e_vectors[0, 1], e_vectors[0, 0]))
     return -angle
 
-def charge_mapping(aa, color_scheme="Cinema"):
-    # https://www.bioinformatics.nl/~berndb/aacolour.html
-    if color_scheme == "Cinema":
-        if aa in 'H K R'.split(): return 'cyan'
-        elif aa in 'D E'.split(): return 'red'
-        elif aa in 'S T N Q'.split(): return 'green'
-        elif aa in 'A V L I M'.split(): return 'white'
-        elif aa in ['F W Y']: return 'magenta'
-        elif aa in ['P G']: return 'brown'
-        elif aa in ['C']: return 'yellow'
-        return 'grey'
-    elif color_scheme == "Clustal":
-        if aa in 'G P S T'.split(): return 'orange'
-        elif aa in 'H K R'.split(): return 'red'
-        elif aa in 'F W Y'.split(): return 'blue'
-        elif aa in 'I L M V'.split(): return 'green'
-        return 'white'
-    else: # "Lesk":
-        if aa in 'G A S T'.split(): return 'orange'
-        elif aa in 'C V I L P F Y M W'.split(): return 'green'
-        elif aa in 'N Q H'.split(): return 'magenta'
-        elif aa in 'D E'.split(): return 'red'
-        elif aa in 'K R'.split(): return 'blue'
-        return 'white'
+def custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num):
+    assert(len(seq) ==  len(res_num))
+    ret = ["white"] * len(seq)
+    for line in custom_color_scheme_txt.split("\n"):
+        line = line.strip()
+        if len(line)<1: continue
+        try: # when chain ids are provided -> applicable only to those chains
+            chains, color_specs = line.split(":")[:2]   # A,B C: white 1-17=red A,L,W=green
+            chains = [c.upper() for c in chains.replace(",", " ").split()]   # A,B C -> ['A', 'B', 'C']
+        except: # if no chain ids are provided -> applicable to all chains
+            chains = None
+            color_specs = line
+        if chains and cid.upper() not in chains: continue
+        for color_spec in color_specs.split():  # white 1-17=red A,L,W=green
+            try:
+                res_num_letter, color = color_spec.split("=")   # 1-17=red or A,L,W=green
+            except:
+                res_num_letter = None   # white
+                color = color_spec
+            if res_num_letter is None:  # white
+                ret = [color] * len(seq)
+            elif res_num_letter.find("-")!=-1:  # 1-17=red
+                try:
+                    start, end = [int(num) for num in res_num_letter.split("-")]
+                    for i in range(len(seq)):
+                        if start <= res_num[i] <= end:
+                            ret[i] = color
+                except:
+                    st.warning(f"ignoring '{color_spec}'\t{res_num_letter}")
+            elif res_num_letter.isnumeric():
+                res_num_int = int(res_num_letter)
+                for i in range(len(seq)):
+                    if res_num_int == res_num[i]:
+                        ret[i] = color
+            else:  # A,L,W=green or A=green
+                residues = [l.upper() for l in res_num_letter.split(",")]
+                for i in range(len(seq)):
+                    if seq[i].upper() in residues:
+                        ret[i] = color
+    return ret
+
+def color_mapping(seq, color_scheme="Cinema"):
+    ret = ["white"] * len(seq)
+    for i, aa in enumerate(seq):
+        print(i, aa)
+        # https://www.bioinformatics.nl/~berndb/aacolour.html
+        if color_scheme == "Cinema":
+            if aa in 'H K R'.split(): ret[i] = 'cyan'
+            elif aa in 'D E'.split(): ret[i] = 'red'
+            elif aa in 'S T N Q'.split(): ret[i] = 'green'
+            elif aa in 'A V L I M'.split(): ret[i] = 'white'
+            elif aa in ['F W Y']: ret[i] = 'magenta'
+            elif aa in ['P G']: ret[i] = 'brown'
+            elif aa in ['C']: ret[i] = 'yellow'
+            else: ret[i] = 'grey'
+        elif color_scheme == "Clustal":
+            if aa in 'G P S T'.split(): ret[i] = 'orange'
+            elif aa in 'H K R'.split(): ret[i] = 'red'
+            elif aa in 'F W Y'.split(): ret[i] = 'blue'
+            elif aa in 'I L M V'.split(): ret[i] = 'green'
+            else: ret[i] = 'white'
+        else: # "Lesk":
+            if aa in 'G A S T'.split(): ret[i] = 'orange'
+            elif aa in 'C V I L P F Y M W'.split(): ret[i] = 'green'
+            elif aa in 'N Q H'.split(): ret[i] = 'magenta'
+            elif aa in 'D E'.split(): ret[i] = 'red'
+            elif aa in 'K R'.split(): ret[i] = 'blue'
+            else: ret[i] = 'white'
+    return ret
 
 int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.5, circle_size_scale=1.0, rotz=0.0)
-other_types = dict(chain_ids=['A'], color_scheme="Cinema", title="ProCart")
+other_types = dict(chain_ids=['A'], color_scheme="Cinema", custom_color_scheme="", title="ProCart")
 def set_query_parameters():
     d = {}
     for k in sorted(st.session_state.keys()):
