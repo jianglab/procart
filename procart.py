@@ -162,9 +162,11 @@ def main():
             if plot_z_dist:
                 center_z = st.checkbox('Center the structure in Z direction', value=False, key="center_z")
                 one_z_plot = st.checkbox('Plot all Z-plots in one figure', value=True, key="one_z_plot")
+                label_at_top = st.checkbox('Place amino acid labels at the top', value=False, key="label_at_top")
             else:
                 center_z = False
                 one_z_plot = False
+                label_at_top = False
             transparent_background = st.checkbox('Set background transparent', value=True, key="transparent_background")
             show_axes = st.checkbox('Show the axes', value=True, key="show_axes")
             warn_bad_ca_dist = st.checkbox('Warn bad Ca-Ca distances', value=True, key="warn_bad_ca_dist")
@@ -200,7 +202,7 @@ def main():
     from bokeh.plotting import figure
     from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead, HoverTool, Range1d
 
-    fig = figure(x_axis_label=None, y_axis_label=None, match_aspect=True)
+    fig = figure(x_axis_label="X position (Å)", y_axis_label="Y position (Å)", match_aspect=True)
     fig.frame_width=plot_width
     fig.xgrid.visible = False
     fig.ygrid.visible = False
@@ -327,13 +329,13 @@ def main():
             if show_residue_circles:
                 aa_indices = [residues[i].id.split('.')[-1] for i in aa_mask]
                 pos = com
-                offset = 1.7*letter_size
+                offset = 0.5*letter_size
             else: 
                 aa_indices = [f"{residues[i].code}{residues[i].id.split('.')[-1]}" for i in aa_mask]
                 pos = ca_pos
-                offset = 2*letter_size
+                offset = 0.5*letter_size
             source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
-            fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
+            fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="left")
 
     if warn_bad_ca_dist and len(bad_ca_dist):
         bad_ca_dist.sort(key=lambda x: abs(x[0]-3.8), reverse=True)
@@ -348,10 +350,24 @@ def main():
     st.bokeh_chart(fig, use_container_width=False)
 
     if plot_z_dist:
-        figs = []
         ymins = []
         ymaxs = []
         for cid, chain in chains:
+            residues = [res for res in chain.residues() if res.atoms(name__regex='CA')]
+            res_ids = [f"{res.id}{res.code}" for res in residues]
+            seq = [res.code for res in residues]
+            ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
+            com = np.array([res.center_of_mass for res in residues])
+            ca_pos_xz, com_xz = unwrap(ca_pos, com, 0 if one_z_plot else center_z) # unwrap the chain to be along x-axis, z-values are preserved
+            ymin = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).min())-1
+            ymax = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).max())+1
+            ymins.append(ymin)
+            ymaxs.append(ymax)
+        ymin_all = min(ymins)
+        ymax_all = max(ymaxs)
+
+        figs = []
+        for ci, (cid, chain) in enumerate(chains):
             residues = [res for res in chain.residues() if res.atoms(name__regex='CA')]
             res_ids = [f"{res.id}{res.code}" for res in residues]
             seq = [res.code for res in residues]
@@ -367,6 +383,9 @@ def main():
                 color = np.array(color_mapping(seq, color_scheme))
             white_mask = np.where(color=="white")
             color[white_mask] = "grey"
+
+            ymin = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).min())-1
+            ymax = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).max())+1
 
             strand_body_x0 = []
             strand_body_y0 = []
@@ -413,14 +432,10 @@ def main():
                         gap_x1.append( ca_pos_xz[i,0] )
                         gap_y1.append( ca_pos_xz[i,1] )
 
-            ymin = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).min())-1
-            ymax = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).max())+1
-            ymins.append(ymin)
-            ymaxs.append(ymax)
             if one_z_plot and len(figs):
                 fig = figs[-1]
             else:
-                fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z poistion (Å)", y_range=(ymin, ymax), match_aspect=True)
+                fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z position (Å)", y_range=(ymin, ymax), match_aspect=True)
                 figs.append(fig)
                 fig.frame_width=plot_width
                 fig.xgrid.visible = False
@@ -460,7 +475,16 @@ def main():
             fig.add_tools(hover)
 
             if show_residue_circles:
-                text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
+                if label_at_top:
+                    if one_z_plot:
+                        ca_pos_xz_top = ca_pos_xz[:, 1]*0 + ymax_all + (len(chain_ids) - ci) * (ymax-ymin) * 0.05
+                    else:
+                        ca_pos_xz_top = ca_pos_xz[:, 1]*0 + ymax + (ymax-ymin) * 0.05
+                        fig.y_range=Range1d(ymin, ymax + (ymax-ymin) * 0.05 + 0.5)
+                    source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z_top':ca_pos_xz_top, 'ca_z':ca_pos_xz[:,1], 'color':color, 'res_id':res_ids})
+                    text=fig.text(source=source, x='ca_x', y='ca_z_top', text='seq', x_offset=0, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
+                else:
+                    text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
                 hover = HoverTool(renderers=[text], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
                 fig.add_tools(hover)
             
@@ -471,13 +495,13 @@ def main():
                 if show_residue_circles:
                     aa_indices = [residues[i].id.split('.')[-1] for i in aa_mask]
                     pos = ca_pos_xz
-                    offset = 2.75*letter_size
+                    offset = 1.6*letter_size * (label_at_top is not True)
                 else: 
                     aa_indices = [f"{residues[i].code}{residues[i].id.split('.')[-1]}" for i in aa_mask]
                     pos = ca_pos_xz
-                    offset = 2*letter_size
+                    offset = 0.5*letter_size * (label_at_top is not True)
                 source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
-                fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
+                fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="left")
 
         if len(figs)>1:
             from bokeh.layouts import column
@@ -485,7 +509,7 @@ def main():
             st.bokeh_chart(figs_all)
         elif len(figs)==1:
             if one_z_plot and len(figs):
-                figs[0].y_range=Range1d(min(ymins), max(ymaxs))
+                figs[0].y_range=Range1d(min(ymins), ymax_all + (len(chain_ids) * (ymax_all-ymin_all) * 0.05 + 0.5)  * label_at_top)
             st.bokeh_chart(figs[0])
 
     if share_url:
@@ -614,7 +638,7 @@ def color_mapping(seq, color_scheme="Cinema"):
             else: ret[i] = 'white'
     return ret
 
-int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
+int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, label_at_top=0, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.5, circle_size_scale=1.0, rotz=0.0)
 other_types = dict(chain_ids=['A'], color_scheme="Cinema", custom_color_scheme="", title="ProCart")
 def set_query_parameters():
