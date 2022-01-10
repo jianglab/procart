@@ -230,11 +230,14 @@ def main():
             com[:, 1] *= -1
         rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
         strand = [res.strand for res in residues]
-        if color_scheme == "Custom":
-            res_num = [int(res.id.split(".")[-1]) for res in residues]
-            color = np.array(custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num))
+        if show_residue_circles:
+            if color_scheme == "Custom":
+                res_num = [int(res.id.split(".")[-1]) for res in residues]
+                color = np.array(custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num))
+            else:
+                color = np.array(color_mapping(seq, color_scheme))
         else:
-            color = np.array(color_mapping(seq, color_scheme))
+            color = np.array(['black']*len(seq))
 
         xmin = int(np.vstack((ca_pos[:,0], com[:,0]-rog)).min())-1
         xmax = int(np.vstack((ca_pos[:,0], com[:,0]+rog)).max())+1
@@ -345,7 +348,7 @@ def main():
         st.warning(msg)
     
     fig.x_range=Range1d(min(xmins)-5, max(xmaxs)+5)
-    fig.y_range=Range1d(min(ymins), max(ymaxs))
+    fig.y_range=Range1d(min(ymins)-5, max(ymaxs)+5)
     fig.frame_height = round(fig.frame_width * (fig.y_range.end-fig.y_range.start)/(fig.x_range.end-fig.x_range.start))
     st.bokeh_chart(fig, use_container_width=False)
 
@@ -376,11 +379,14 @@ def main():
             ca_pos_xz, com_xz = unwrap(ca_pos, com, 0 if one_z_plot else center_z) # unwrap the chain to be along x-axis, z-values are preserved
             rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
             strand = [res.strand for res in residues]
-            if color_scheme == "Custom":
-                res_num = [int(res.id.split(".")[-1]) for res in residues]
-                color = np.array(custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num))
+            if show_residue_circles:
+                if color_scheme == "Custom":
+                    res_num = [int(res.id.split(".")[-1]) for res in residues]
+                    color = np.array(custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num))
+                else:
+                    color = np.array(color_mapping(seq, color_scheme))
             else:
-                color = np.array(color_mapping(seq, color_scheme))
+                color = np.array(['black']*len(seq))
             white_mask = np.where(color=="white")
             color[white_mask] = "grey"
 
@@ -483,6 +489,13 @@ def main():
                         fig.y_range=Range1d(ymin, ymax + (ymax-ymin) * 0.05 + 0.5)
                     source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z_top':ca_pos_xz_top, 'ca_z':ca_pos_xz[:,1], 'color':color, 'res_id':res_ids})
                     text=fig.text(source=source, x='ca_x', y='ca_z_top', text='seq', x_offset=0, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
+                    txt_label = f"{residues[0].id.split('.')[-1]}"
+                    fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-0.5*letter_size, y_offset=-0.5*letter_size, text_font_size=f'{letter_size-2:d}pt', text_color="black", text_baseline="middle", text_align="right")
+                    if len(chain_ids)>1: 
+                        n_txt_label = len(txt_label)
+                        txt_label = f"{cid}: "
+                        fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-(n_txt_label-0.5)*(letter_size-2), text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="right")
+                    fig.text(x=[ca_pos_xz[-1,0]], y=[ca_pos_xz_top[-1]], text=[f"{residues[-1].id.split('.')[-1]}"], x_offset=0.5*letter_size, y_offset=-0.5*letter_size, text_font_size=f'{letter_size-2:d}pt', text_color="black", text_baseline="middle", text_align="left")
                 elif show_residue_circles:
                     text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
                     hover = HoverTool(renderers=[text], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
@@ -503,8 +516,8 @@ def main():
                     aa_indices = [f"{residues[i].code}{residues[i].id.split('.')[-1]}" for i in aa_mask]
                     pos = ca_pos_xz
                     offset = 0.5*letter_size
-                source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
-                fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="left")
+                source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices, 'color':color[aa_mask]})
+                fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="left")
 
         if len(figs)>1:
             from bokeh.layouts import column
