@@ -162,7 +162,7 @@ def main():
             if plot_z_dist:
                 center_z = st.checkbox('Center the structure in Z direction', value=False, key="center_z")
                 one_z_plot = st.checkbox('Plot all Z-plots in one figure', value=True, key="one_z_plot")
-                label_at_top = st.checkbox('Place amino acid labels at the top', value=False, key="label_at_top")
+                label_at_top = st.checkbox('Place amino acid labels at the top', value=True, key="label_at_top")
             else:
                 center_z = False
                 one_z_plot = False
@@ -474,7 +474,7 @@ def main():
             hover = HoverTool(renderers=[scatter], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
 
-            if show_residue_circles:
+            if show_residue_circles or label_at_top:
                 if label_at_top:
                     if one_z_plot:
                         ca_pos_xz_top = ca_pos_xz[:, 1]*0 + ymax_all + (len(chain_ids) - ci) * (ymax-ymin) * 0.05
@@ -483,23 +483,26 @@ def main():
                         fig.y_range=Range1d(ymin, ymax + (ymax-ymin) * 0.05 + 0.5)
                     source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z_top':ca_pos_xz_top, 'ca_z':ca_pos_xz[:,1], 'color':color, 'res_id':res_ids})
                     text=fig.text(source=source, x='ca_x', y='ca_z_top', text='seq', x_offset=0, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
-                else:
+                elif show_residue_circles:
                     text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
-                hover = HoverTool(renderers=[text], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
-                fig.add_tools(hover)
+                    hover = HoverTool(renderers=[text], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
+                    fig.add_tools(hover)
             
             if show_aa_indices:
                 aa_mask = [ ri for ri, res in enumerate(residues) if int(res.id.split('.')[-1])%10==0 ]
                 if 0 not in aa_mask: aa_mask = [0] + aa_mask
                 if len(residues)-1 not in aa_mask: aa_mask += [len(residues)-1]
-                if show_residue_circles:
-                    aa_indices = [residues[i].id.split('.')[-1] for i in aa_mask]
+                if show_residue_circles or label_at_top:
+                    if label_at_top:
+                        aa_indices = [f"{residues[i].code}{residues[i].id.split('.')[-1]}" for i in aa_mask]
+                    else:
+                        aa_indices = [residues[i].id.split('.')[-1] for i in aa_mask]
                     pos = ca_pos_xz
-                    offset = 1.6*letter_size * (label_at_top is not True)
-                else: 
+                    offset = 0.5*letter_size if label_at_top else letter_size*1.6
+                else:
                     aa_indices = [f"{residues[i].code}{residues[i].id.split('.')[-1]}" for i in aa_mask]
                     pos = ca_pos_xz
-                    offset = 0.5*letter_size * (label_at_top is not True)
+                    offset = 0.5*letter_size
                 source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
                 fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="left")
 
@@ -638,7 +641,7 @@ def color_mapping(seq, color_scheme="Cinema"):
             else: ret[i] = 'white'
     return ret
 
-int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, label_at_top=0, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
+int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, label_at_top=1, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.5, circle_size_scale=1.0, rotz=0.0)
 other_types = dict(chain_ids=['A'], color_scheme="Cinema", custom_color_scheme="", title="ProCart")
 def set_query_parameters():
