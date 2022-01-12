@@ -91,7 +91,7 @@ def main():
                 pdb_id = st.text_input(label=label, value=pdb_id_default, key='pdb_id', help=help)
                 pdb_id = pdb_id.upper()
                 if pdb_id not in pdb_ids_all:
-                    msg = f"{pdb_id} is not a valid PDB entry. Please input a valid id (for example, '{pdb_id_default}')"
+                    msg = f"{pdb_id} is not a valid PDB entry. Please input a valid id (for example, '{pdb_id_default}') from the {len(pdb_ids_all):,} entries"
                     st.warning(msg)
                     return
                 if pdb_id not in pdb_ids_amyloid:
@@ -628,7 +628,6 @@ def custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num):
 def color_mapping(seq, color_scheme="Cinema"):
     ret = ["white"] * len(seq)
     for i, aa in enumerate(seq):
-        print(i, aa)
         # https://www.bioinformatics.nl/~berndb/aacolour.html
         if color_scheme == "Cinema":
             if aa in 'H K R'.split(): ret[i] = 'cyan'
@@ -688,12 +687,15 @@ def parse_query_parameters():
     if "title" not in st.session_state:
         st.session_state.title = "ProCart"
 
-#@st.cache(persist=True, show_spinner=False, ttl=24*60*60.) # refresh every day
+@st.cache(persist=True, show_spinner=False, ttl=24*60*60.) # refresh every day
 def get_pdb_ids():
-    import string, itertools
-    alphanumericals = list('0123456789'+string.ascii_uppercase)
-    pdb_ids = list(itertools.product(alphanumericals[1:], alphanumericals, alphanumericals, alphanumericals))
-    pdb_ids = [ ''.join(pdb_id) for pdb_id in pdb_ids]
+    try:
+        url = "ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/entries.idx"
+        ds = np.DataSource(None)
+        with ds.open(url) as fp:
+            pdb_ids = [line[:4] for line in fp.readlines()[2:] if len(line) > 4]
+    except:
+        pdb_ids = None
     return pdb_ids
 
 def get_random_pdb_id():
