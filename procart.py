@@ -1,7 +1,7 @@
 """ 
 MIT License
 
-Copyright (c) 2021 Wen Jiang
+Copyright (c) 2021-2022 Wen Jiang
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -814,22 +814,27 @@ def is_hosted(return_host=False):
     else:
         return hosted
 
+def get_url():
+    # ad hoc way before streamlit can return the url
+    _, host = is_hosted(return_host=True)
+    if len(host)<1: return None
+    if host == "streamlit":
+        url = "https://share.streamlit.io/wjiang/procart/main/"
+    elif host == "heroku":
+        url = "https://protein-structure-procart.herokuapp.com/"
+    else:
+        url = f"http://{host}:8501/"
+    import urllib
+    params = st.experimental_get_query_params()
+    d = {k:params[k][0] for k in params}
+    url += "?" + urllib.parse.urlencode(d)
+    return url
+
 def qr_code(url=None, size = 8):
     import_with_auto_install(["qrcode"])
     import qrcode
-    if url is None: # ad hoc way before streamlit can return the url
-        _, host = is_hosted(return_host=True)
-        if len(host)<1: return None
-        if host == "streamlit":
-            url = "https://share.streamlit.io/wjiang/procart/main/"
-        elif host == "heroku":
-            url = "https://protein-structure-procart.herokuapp.com/"
-        else:
-            url = f"http://{host}:8501/"
-        import urllib
-        params = st.experimental_get_query_params()
-        d = {k:params[k][0] for k in params}
-        url += "?" + urllib.parse.urlencode(d)
+    if url is None:
+        url = get_url()
     if not url: return None
     img = qrcode.make(url)  # qrcode.image.pil.PilImage
     data = np.array(img.convert("RGBA"))
