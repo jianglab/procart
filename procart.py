@@ -174,12 +174,12 @@ def main():
             if show_residue_circles:
                 circle_size_scale = st.number_input('Scale circles relative to the residue sizes', value=1.0, min_value=0.1, step=0.1, key="circle_size_scale")
                 circle_line_thickness = int(st.number_input('Circle line width (point)', value=1, min_value=0, step=1, key="circle_line_thickness"))
-                circle_opaque = st.number_input('Opaqueness of the circles', value=0.5, min_value=0., max_value=1.0, step=0.1, key="circle_opaque")
+                circle_opaque = st.number_input('Opaqueness of the circles', value=0.9, min_value=0., max_value=1.0, step=0.1, key="circle_opaque")
                 letter_size = int(st.number_input('Size of the letters (point)', value=10, min_value=1, step=1, key="letter_size"))
             else:
                 circle_size_scale = 1.0
                 circle_line_thickness = 1
-                circle_opaque = 0.85
+                circle_opaque = 0.9
                 letter_size = 10
             backbone_line_thickness = int(st.number_input('Backbone line thickness (pixel)', value=2, min_value=0, step=1, key="backbone_line_thickness"))
             strand_line_thickness = int(st.number_input('Strand line thickness (pixel)', value=4, min_value=0, step=1, key="strand_line_thickness"))
@@ -303,19 +303,18 @@ def main():
         if show_gap:
             line_color = 'grey'
             source = ColumnDataSource({'x0':gap_x0, 'y0':gap_y0, 'x1':gap_x1, 'y1':gap_y1})
-            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_dash="dotted", line_width=backbone_line_thickness, line_color=line_color)
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_dash="dotted", line_width=backbone_line_thickness, line_color=line_color, level='underlay')
 
         line_color = 'grey'
         source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
-        fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_line_thickness, line_color=line_color)
+        fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_line_thickness, line_color=line_color, level='underlay')
 
         line_color = 'black'
         source = ColumnDataSource({'x0':strand_body_x0, 'y0':strand_body_y0, 'x1':strand_body_x1, 'y1':strand_body_y1})
-        fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_line_thickness, line_color=line_color)
+        fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_line_thickness, line_color=line_color, level='underlay')
 
         source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
-        arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_line_thickness, line_color=line_color, end=VeeHead(size=strand_line_thickness*3, line_color="black", fill_color="black", line_width=strand_line_thickness))
-        arrow.level = 'underlay'
+        arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_line_thickness, line_color=line_color, end=VeeHead(size=strand_line_thickness*3, line_color="black", fill_color="black", line_width=strand_line_thickness), level='underlay')
         fig.add_layout(arrow)
 
         if show_residue_circles:
@@ -323,7 +322,7 @@ def main():
             circle=fig.circle(source=source, x='com_x', y='com_y', radius='rog', radius_units='data', line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque)
             hover = HoverTool(renderers=[circle], tooltips=[('COM X', '@com_x{0.00}Å'), ('COM Y', '@com_y{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
-            fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center")
+            fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='guide')
 
         if show_aa_indices:
             aa_mask = [ ri for ri, res in enumerate(residues) if int(res.id.split('.')[-1])%10==0 ]
@@ -338,7 +337,7 @@ def main():
                 pos = ca_pos
                 offset = 0.5*letter_size
             source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
-            fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="left")
+            fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="left", level='overlay')
 
     if warn_bad_ca_dist and len(bad_ca_dist):
         bad_ca_dist.sort(key=lambda x: abs(x[0]-3.8), reverse=True)
@@ -654,7 +653,7 @@ def color_mapping(seq, color_scheme="Cinema"):
     return ret
 
 int_types = dict(backbone_line_thickness=2, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, label_at_top=1, letter_size=10, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, show_residue_circles=1, strand_line_thickness=4, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
-float_types = dict(circle_opaque=0.5, circle_size_scale=1.0, rotz=0.0)
+float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rotz=0.0)
 other_types = dict(chain_ids=['A'], color_scheme="Cinema", custom_color_scheme="", title="ProCart")
 def set_query_parameters():
     d = {}
