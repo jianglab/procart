@@ -175,7 +175,7 @@ def main():
                 circle_size_scale = st.number_input('Scale circles relative to the residue sizes', value=1.0, min_value=0.1, step=0.1, key="circle_size_scale")
                 circle_line_thickness = int(st.number_input('Circle line width (point)', value=1, min_value=0, step=1, key="circle_line_thickness"))
                 circle_opaque = st.number_input('Opaqueness of the circles', value=0.9, min_value=0., max_value=1.0, step=0.1, key="circle_opaque")
-                letter_size = int(st.number_input('Size of the letters (point)', value=10, min_value=1, step=1, key="letter_size"))
+                letter_size = int(st.number_input('Size of the letters (point)', value=16, min_value=1, step=1, key="letter_size"))
             else:
                 circle_size_scale = 1.0
                 circle_line_thickness = 1
@@ -319,10 +319,10 @@ def main():
 
         if show_residue_circles:
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'com_x':com[:,0], 'com_y':com[:,1], 'rog':rog, 'color':color, 'strand':strand, 'res_id':res_ids})
-            circle=fig.circle(source=source, x='com_x', y='com_y', radius='rog', radius_units='data', line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque)
+            circle=fig.circle(source=source, x='com_x', y='com_y', radius='rog', radius_units='data', line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque, level='guide')
             hover = HoverTool(renderers=[circle], tooltips=[('COM X', '@com_x{0.00}Å'), ('COM Y', '@com_y{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
-            fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='guide')
+            fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
 
         if show_aa_indices:
             aa_mask = [ ri for ri, res in enumerate(residues) if int(res.id.split('.')[-1])%10==0 ]
@@ -459,19 +459,18 @@ def main():
             if show_gap:
                 line_color = 'grey'
                 source = ColumnDataSource({'x0':gap_x0, 'y0':gap_y0, 'x1':gap_x1, 'y1':gap_y1})
-                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_dash="dotted", line_width=backbone_line_thickness, line_color=line_color)
+                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_dash="dotted", line_width=backbone_line_thickness, line_color=line_color, level='underlay')
 
             line_color = 'grey'
             source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
-            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_line_thickness, line_color=line_color)
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_line_thickness, line_color=line_color, level='underlay')
 
             line_color = 'black'
             source = ColumnDataSource({'x0':strand_body_x0, 'y0':strand_body_y0, 'x1':strand_body_x1, 'y1':strand_body_y1})
-            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_line_thickness, line_color=line_color)
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_line_thickness, line_color=line_color, level='underlay')
 
             source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
-            arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_line_thickness, line_color=line_color, end=VeeHead(size=strand_line_thickness*3, line_color="black", fill_color="black", line_width=strand_line_thickness))
-            arrow.level = 'underlay'
+            arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_line_thickness, line_color=line_color, end=VeeHead(size=strand_line_thickness*3, line_color="black", fill_color="black", line_width=strand_line_thickness), level='underlay')
             fig.add_layout(arrow)
 
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z':ca_pos_xz[:,1], 'com_x':com_xz[:,0], 'com_z':com_xz[:,1], 'rog':rog, 'color':color, 'strand':strand, 'res_id':res_ids})
@@ -489,14 +488,14 @@ def main():
                     source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z_top':ca_pos_xz_top, 'ca_z':ca_pos_xz[:,1], 'color':color, 'res_id':res_ids})
                     text=fig.text(source=source, x='ca_x', y='ca_z_top', text='seq', x_offset=0, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
                     txt_label = f"{residues[0].id.split('.')[-1]}"
-                    fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-0.5*letter_size, y_offset=-0.5*letter_size, text_font_size=f'{letter_size-2:d}pt', text_color="black", text_baseline="middle", text_align="right")
+                    fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-0.5*letter_size, y_offset=-0.5*letter_size, text_font_size=f'{letter_size-2:d}pt', text_color="black", text_baseline="middle", text_align="right", level='overlay')
                     if len(chain_ids)>1: 
                         n_txt_label = len(txt_label)
                         txt_label = f"{cid}: "
-                        fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-(n_txt_label-0.5)*(letter_size-2), text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="right")
-                    fig.text(x=[ca_pos_xz[-1,0]], y=[ca_pos_xz_top[-1]], text=[f"{residues[-1].id.split('.')[-1]}"], x_offset=0.5*letter_size, y_offset=-0.5*letter_size, text_font_size=f'{letter_size-2:d}pt', text_color="black", text_baseline="middle", text_align="left")
+                        fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-(n_txt_label-0.5)*(letter_size-2), text_font_size=f'{letter_size:d}pt', text_color="black", text_baseline="middle", text_align="right", level='overlay')
+                    fig.text(x=[ca_pos_xz[-1,0]], y=[ca_pos_xz_top[-1]], text=[f"{residues[-1].id.split('.')[-1]}"], x_offset=0.5*letter_size, y_offset=-0.5*letter_size, text_font_size=f'{letter_size-2:d}pt', text_color="black", text_baseline="middle", text_align="left", level='overlay')
                 elif show_residue_circles:
-                    text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
+                    text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=letter_size, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="center", level='overlay')
                     hover = HoverTool(renderers=[text], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
                     fig.add_tools(hover)
             
@@ -516,7 +515,7 @@ def main():
                     pos = ca_pos_xz
                     offset = 0.5*letter_size
                 source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices, 'color':color[aa_mask]})
-                fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="left")
+                fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{letter_size:d}pt', text_color="color", text_baseline="middle", text_align="left", level='overlay')
 
         if len(figs)>1:
             from bokeh.layouts import column
