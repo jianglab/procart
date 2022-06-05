@@ -1,7 +1,7 @@
 # ProCart
 ProCart is a Web app that plots a cartoon to illustrate the residue properties of amyloid proteins in the context of their atomic structures.
 
-Click the link (<a href="https://protein-structure-procart.herokuapp.com">ProCart</a>) to plot a cartoon of your amyloid protein structure!</a>
+Click the link ([ProCart](https://protein-structure-procart.herokuapp.com)) to plot a cartoon of your amyloid protein structure!
 
 <a href="https://protein-structure-procart.herokuapp.com/?chain_ids=A&chain_ids=B&pdb_id=7MKH"><img src="./procart.png" style='width: 100%; object-fit: contain'></a>
 

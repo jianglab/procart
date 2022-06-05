@@ -55,11 +55,9 @@ def main():
     st.title(st.session_state.title)
 
     with st.sidebar:
-        # make radio display horizontal
-        st.markdown('<style>div.row-widget.stRadio > div{flex-direction:row;}</style>', unsafe_allow_html=True)
         input_modes = {0:"upload", 1:"url", 2:"PDB ID"}
         help = None
-        input_mode = st.radio(label="How to obtain the input PDB file:", options=list(input_modes.keys()), format_func=lambda i:input_modes[i], index=2, help=help, key="input_mode")
+        input_mode = st.radio(label="How to obtain the input PDB file:", options=list(input_modes.keys()), format_func=lambda i:input_modes[i], index=2, horizontal=True, help=help, key="input_mode")
         pdb_ids_all = get_pdb_ids()
         pdb_ids_amyloid = pdb_ids_all
         pdb = None
@@ -145,7 +143,7 @@ def main():
         plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=False, key="plot_z_dist")
 
         if show_residue_circles:
-            color_scheme = st.radio('Choose a coloring scheme:', options=["Cinema", "Lesk", "Clustal", "Custom"], key="color_scheme")
+            color_scheme = st.radio('Choose a coloring scheme:', options=["Cinema", "Lesk", "Clustal", "Custom"], horizontal=True, key="color_scheme")
             if color_scheme == "Custom":
                 example = "white 1-10=red 17=blue L,W=yellow P=cyan"
                 example+= "\nA: white 1-10=red 17=blue L,W=yellow P=cyan"
