@@ -1,9 +1,9 @@
 # ProCart
 ProCart is a Web app that plots a cartoon to illustrate the residue properties of amyloid proteins in the context of their atomic structures.
 
-Click the link ([ProCart](https://protein-structure-procart.herokuapp.com)) to plot a cartoon of your amyloid protein structure!
+Click the link ([ProCart](https://jianglab-procart-streamlit-app-vxbkzh.streamlitapp.com)) to plot a cartoon of your amyloid protein structure!
 
-<a href="https://protein-structure-procart.herokuapp.com/?chain_ids=A&chain_ids=B&pdb_id=7MKH"><img src="./procart.png" style='width: 100%; object-fit: contain'></a>
+<a href="https://jianglab-procart-streamlit-app-vxbkzh.streamlitapp.com/?chain_ids=A&chain_ids=B&pdb_id=7MKH"><img src="./procart.png" style='width: 100%; object-fit: contain'></a>
 
 ## Why ProCart?
 While the atomic structures of amyloid fibrils, for example, [the structure of Tau filaments from Alzheimer’s disease](https://www.nature.com/articles/nature23002#Fig3) and [the structure of Tau filaments in Prion protein amyloidoses](https://link.springer.com/article/10.1007%2Fs00401-021-02336-w#Fig4), are often presented nicely in XY plane as colored circles around line segments through the Cα atoms, the figures were manually drawn due to the lack of an automated graphic display tool. To eliminate the tedious manual process and to be more quantitative with the positions and sizes of different residues for our new structures of TMEM106B filaments from MSTD, we developed the ProCart method originally as [a Google Colab notebook](https://colab.research.google.com/drive/10q6qJyccMtJlNWn-7I49g6sRwVf_IkWX?usp=sharing). To make the method more convenient and accessible to all users, we then further developed it into a Web app with some nice features listed below:
