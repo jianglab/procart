@@ -13,7 +13,7 @@ While the atomic structures of amyloid fibrils, for example, [the structure of T
 * The backbone is represented as thin line segments connected at the Cα atoms
 * The β-strands are represented by thicker lines and an arrow ended at the last residue of the strand
 * You can choose a coloring scheme from [three choices (Cinema, Lesk, and Clustal)](https://www.bioinformatics.nl/~berndb/aacolour.html) or specify your own coloring scheme to map any chain, sequence range or amino acid to any color
-* To accurately depict the positions of the residues, the residues are presented as circles positioned at the center-of-mass of the entire residue (including backbone and side-chain atoms)
-* To quantitatively illustrate the packing of the residues, the sizes of the circles are proportional to the radius-of-gyration computed for each of the residues
+* To accurately illustrate the packing of the residues, the residues are presented as the union outline of all atoms in the residue with the size of each atom equal to its van der waals radius.
+* If the user chooses to represent each residue as a circle, the circles will be positioned at the center-of-mass of the entire residue (including backbone and side-chain atoms) with the sizes of the circles proportional to the radius-of-gyration computed for each of the residues
 * Mouse hovering over the residues will display the coordinates and the amino acid identity in the tooltips
 * The plots can be shared/reproduced via a URL displayed in the browser address bar or a QR code displayed below the plots
