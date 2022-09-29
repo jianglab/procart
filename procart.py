@@ -159,7 +159,7 @@ def main():
         with st.expander(label=f"Additional settings", expanded=False):
             show_aa_indices = st.checkbox('Show amino acid indices', value=True, key="show_aa_indices")
             show_gap = st.checkbox('Show gaps in the model', value=True, key="show_gap")
-            vflip = st.checkbox('Vertically flip the XY-plot', value=True, key="vflip")
+            vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
             center_xy = st.checkbox('Center the structure in XY plane', value=False, key="center_xy")
             if plot_z_dist:
                 center_z = st.checkbox('Center the structure in Z direction', value=False, key="center_z")
@@ -183,8 +183,8 @@ def main():
                 circle_line_thickness = 1
                 circle_opaque = 0.9
                 letter_size = 10
-            backbone_line_thickness = int(st.number_input('Backbone line thickness (pixel)', value=5, min_value=0, step=1, key="backbone_line_thickness"))
-            strand_line_thickness = int(st.number_input('Strand line thickness (pixel)', value=10, min_value=0, step=1, key="strand_line_thickness"))
+            backbone_line_thickness = int(st.number_input('Backbone line thickness (pixel)', value=3, min_value=0, step=1, key="backbone_line_thickness"))
+            strand_line_thickness = int(st.number_input('Strand line thickness (pixel)', value=6, min_value=0, step=1, key="strand_line_thickness"))
 
         share_url = st.checkbox('Show sharable URL', value=False, help="Include relevant parameters in the browser URL to allow you to share the URL and reproduce the plots", key="share_url")
         if share_url:
@@ -686,7 +686,7 @@ def color_mapping(seq, color_scheme="Cinema"):
             else: ret[i] = 'white'
     return ret
 
-int_types = dict(backbone_line_thickness=5, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, label_at_top=1, letter_size=16, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, strand_line_thickness=10, transparent_background=1, vflip=1, warn_bad_ca_dist=1)
+int_types = dict(backbone_line_thickness=3, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, label_at_top=1, letter_size=16, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, strand_line_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rotz=0.0)
 other_types = dict(show_residue_shape="Side chain", chain_ids=['A'], color_scheme="Cinema", custom_color_scheme="", title="ProCart")
 def set_query_parameters():
