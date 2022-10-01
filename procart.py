@@ -347,7 +347,7 @@ def main():
             source = ColumnDataSource({'x0':strand_body_x0, 'y0':strand_body_y0, 'x1':strand_body_x1, 'y1':strand_body_y1})
             fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color)
 
-            if arrowhead_length<0:
+            if arrowhead_length<=0:
                 source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
                 fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color)
 
