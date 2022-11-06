@@ -162,7 +162,7 @@ def main():
                 label_at_top = False
 
             if show_residue_shape != 'Blank' or label_at_top:
-                color_scheme = color_scheme_container.radio('Choose a coloring scheme:', options=["Cinema", "Lesk", "Clustal", "Custom"], horizontal=True, key="color_scheme")
+                color_scheme = color_scheme_container.radio('Choose a coloring scheme:', options=["Charge", "Hydrophobicity", "Cinema", "Lesk", "Clustal", "Custom"], horizontal=True, key="color_scheme")
                 if color_scheme == "Custom":
                     example = "white 1-10=red 17=blue L,W=yellow P=cyan"
                     example+= "\nA: white 1-10=red 17=blue L,W=yellow P=cyan"
@@ -682,8 +682,28 @@ def custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num):
                         ret[i] = color
     return ret
 
+# https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/midas/hydrophob.html
+hydrophobicity=dict(I=4.5,V=4.2,L=3.8,F=2.8,C=2.5,M=1.9,A=1.8,G=-0.4,T=-0.7,S=-0.8,W=-0.9,Y=-1.3,P=-1.6,H=-1.6,E=-3.5,Q=-3.5,D=-3.5,N=-3.5,K=-3.9,R=-4.5)
+# https://www.sigmaaldrich.com/US/en/technical-documents/technical-article/protein-biology/protein-structural-analysis/amino-acid-reference-chart
+pI=dict(A=6,R=10.76,N=5.41,D=2.77,C=5.07,E=3.22,Q=5.65,G=5.97,H=7.59,I=6.02,L=5.98,K=9.74,M=5.74,F=5.48,P=6.3,S=5.68,T=5.6,W=5.89,Y=5.66,V=5.96)
 def color_mapping(seq, color_scheme="Cinema"):
     ret = ["white"] * len(seq)
+    if color_scheme in ["Hydrophobicity", "Charge"]:
+        from bokeh.palettes import Turbo256
+        if color_scheme == "Hydrophobicity":
+            d = hydrophobicity
+            pallet = Turbo256   # red (hydrophobic) -> blue (hydrophilic)
+        else:
+            d = pI
+            #pallet = matplotlib colormap: seismic   # red (negative) -> white (neutral) -> blue (positive)
+            pallet = Turbo256[::-1]   # red (negative) -> blue (positive)
+        vals = np.array(list(d.values()))
+        val_min = vals.min()
+        val_max = vals.max()
+        for i, aa in enumerate(seq):
+            val_int = int(round((d[aa]-val_min)/(val_max-val_min)*255))
+            ret[i] = pallet[val_int]
+        return ret
     for i, aa in enumerate(seq):
         # https://www.bioinformatics.nl/~berndb/aacolour.html
         if color_scheme == "Cinema":
