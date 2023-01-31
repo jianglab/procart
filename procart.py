@@ -1,7 +1,7 @@
 """ 
 MIT License
 
-Copyright (c) 2021-2022 Wen Jiang
+Copyright (c) 2021-2023 Wen Jiang
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -144,36 +144,34 @@ def main():
             model.rotate(angle=np.deg2rad(rotz), axis='z')
 
         show_residue_shape = st.radio('Show residues:', options=["Side chain", "Circle", "Circle (const)", "Blank"], horizontal=True, key="show_residue_shape")
-        plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=False, key="plot_z_dist")
         color_scheme_container = st.container()
+
+        plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=False, key="plot_z_dist")
 
         with st.expander(label=f"Additional settings", expanded=False):
             show_aa_indices = st.checkbox('Show amino acid indices', value=True, key="show_aa_indices")
             show_gap = st.checkbox('Show gaps in the model', value=True, key="show_gap")
-            vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
-            center_xy = st.checkbox('Center the structure in XY plane', value=False, key="center_xy")
-            if plot_z_dist:
-                center_z = st.checkbox('Center the structure in Z direction', value=False, key="center_z")
-                one_z_plot = st.checkbox('Plot all Z-plots in one figure', value=True, key="one_z_plot")
-                label_at_top = st.checkbox('Place amino acid labels at the top', value=True, key="label_at_top")
-            else:
-                center_z = False
-                one_z_plot = False
-                label_at_top = False
-
-            if show_residue_shape != 'Blank' or label_at_top:
-                color_scheme = color_scheme_container.radio('Choose a coloring scheme:', options=["Charge", "Hydrophobicity", "Cinema", "Lesk", "Clustal", "Custom"], horizontal=True, key="color_scheme")
-                if color_scheme == "Custom":
-                    example = "white 1-10=red 17=blue L,W=yellow P=cyan"
-                    example+= "\nA: white 1-10=red 17=blue L,W=yellow P=cyan"
-                    example+= "\nA,B: white 1-10=red 17=blue L,W=yellow P=cyan"
-                    custom_color_scheme_txt = color_scheme_container.text_area("Specify your color scheme:", value="", height=128, max_chars=None, key="custom_color_scheme", help=None, placeholder=example)
-            else:
-                color_scheme = "Cinema"
-
             transparent_background = st.checkbox('Set background transparent', value=True, key="transparent_background")
             show_axes = st.checkbox('Show the axes', value=True, key="show_axes")
             warn_bad_ca_dist = st.checkbox('Warn bad Ca-Ca distances', value=True, key="warn_bad_ca_dist")
+            vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
+            center_xy = st.checkbox('Center the structure in XY plane', value=True, key="center_xy")
+            if plot_z_dist:
+                one_z_plot = st.checkbox('Plot all Z-plots in one figure', value=True, key="one_z_plot")
+                label_at_top = st.checkbox('Label amino acid at the top of Z-plots', value=True, key="label_at_top")
+                center_z = st.checkbox('Center the structure in Z direction', value=True, key="center_z")
+                if center_z:
+                    center_z_per_chain = st.checkbox('Center each chain in Z direction', value=False, key="center_z_per_chain") 
+                else:
+                    center_z_per_chain = False   
+                center_x_at = st.text_input('Center the X-axis of Z-plot at', placeholder="A.1 B.2", value="", help="Center the Z-plot at this amino acid of each chain instead of the first amino acid", key="center_x_at")
+            else:
+                center_z = False
+                center_z_per_chain = False
+                center_x_at = ""
+                one_z_plot = False
+                label_at_top = False
+
             plot_width = int(st.number_input('Plot width (pixel)', value=1000, min_value=100, step=10, key="plot_width"))
             if show_residue_shape != "Blank":
                 circle_size_scale = st.number_input('Scale circles relative to the residue sizes', value=1.0, min_value=0.1, step=0.1, key="circle_size_scale")
@@ -183,13 +181,13 @@ def main():
                 circle_size_scale = 1.0
                 circle_line_thickness = 1
                 circle_opaque = 0.9
-            aa_color = st.text_input('Amino acid label color', value="black", key="aa_color")
+            aa_color = st.text_input('Amino acid label color(s)', placeholder="red blue", value="black", help="example: red blue", key="aa_color")
             aa_size = int(st.number_input('Amino acid label size (pixel)', value=14, min_value=0, step=1, key="aa_size"))
-            ca_color = st.text_input('Cα color', value="black", key="ca_color")
+            ca_color = st.text_input('Cα color(s)', placeholder="red blue", value="black", help="example: red blue", key="ca_color")
             ca_size = int(st.number_input('Cα marker size (pixel)', value=6, min_value=0, step=1, key="ca_size"))
-            backbone_color = st.text_input('Backbone line color', value="black", key="backbone_color")
+            backbone_color = st.text_input('Backbone line color(s)', placeholder="red blue", value="grey", help="example: red blue", key="backbone_color")
             backbone_thickness = int(st.number_input('Backbone line thickness (pixel)', value=3, min_value=0, step=1, key="backbone_thickness"))
-            strand_color = st.text_input('Strand line color', value="black", key="strand_color")
+            strand_color = st.text_input('Strand line color(s)', placeholder="red blue", value="black", help="example: red blue", key="strand_color")
             strand_thickness = int(st.number_input('Strand line thickness (pixel)', value=6, min_value=0, step=1, key="strand_thickness"))
             arrowhead_length = int(st.number_input('Arrowhead length (pixel)', value=24, min_value=0, step=1, key="arrowhead_length"))
 
@@ -198,6 +196,22 @@ def main():
             show_qr = st.checkbox('Show QR code of the URL', value=False, help="Display the QR code of the sharable URL", key="show_qr")
         else:
             show_qr = False
+
+        if show_residue_shape != 'Blank' or label_at_top:
+            color_scheme = color_scheme_container.radio('Choose a coloring scheme:', options=["Charge", "Hydrophobicity", "Cinema", "Lesk", "Clustal", "Custom"], horizontal=True, key="color_scheme")
+            if color_scheme == "Custom":
+                example = "white 1-10=red 17=blue L,W=yellow P=cyan"
+                example+= "\nA: white 1-10=red 17=blue L,W=yellow P=cyan"
+                example+= "\nA,B: white 1-10=red 17=blue L,W=yellow P=cyan"
+                custom_color_scheme_txt = color_scheme_container.text_area("Specify your color scheme:", value="", height=128, max_chars=None, key="custom_color_scheme", help=None, placeholder=example)
+        else:
+            color_scheme = "Cinema"
+
+    import re
+    aa_colors = re.split('[;,\s]', aa_color)
+    ca_colors = re.split('[;,\s]', ca_color)
+    backbone_colors = re.split('[;,\s]', backbone_color)
+    strand_colors = re.split('[;,\s]', strand_color)
 
     if vflip: vflip_model(model)
 
@@ -209,6 +223,10 @@ def main():
         if center_z:
             dz = -com_model[2]
         model.translate(dx=dx, dy=dy, dz=dz)
+        if center_z_per_chain:
+            for cid, chain in chains:
+                com_model = chain.center_of_mass
+                chain.translate(dz=-com_model[2])
 
     from bokeh.plotting import figure
     from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead, HoverTool, Range1d
@@ -230,7 +248,7 @@ def main():
     ymins = []
     ymaxs = []
     bad_ca_dist = []
-    for cid, chain in chains:
+    for ci, (cid, chain) in enumerate(chains):
         residues = [res for res in chain.residues() if res.atoms(name__regex='CA')]
         res_ids = [f"{res.id}{res.code}" for res in residues]
         seq = [res.code for res in residues]
@@ -274,6 +292,11 @@ def main():
         gap_y0 = []
         gap_x1 = []
         gap_y1 = []
+
+        aa_color_i = aa_colors[ci%len(aa_colors)]
+        ca_color_i = ca_colors[ci%len(ca_colors)]
+        backbone_color_i = backbone_colors[ci%len(backbone_colors)]
+        strand_color_i = strand_colors[ci%len(strand_colors)]
 
         for i in range(len(strand)):
             ca_dist = np.linalg.norm(ca_pos[i]-ca_pos[i-1])
@@ -336,29 +359,29 @@ def main():
 
         if backbone_thickness>0:
             source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
-            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color)
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color_i)
             if strand_thickness<=0:
                 source = ColumnDataSource({'x0':strand_body_x0, 'y0':strand_body_y0, 'x1':strand_body_x1, 'y1':strand_body_y1})
-                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color)
+                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color_i)
                 source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
-                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color)
+                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color_i)
 
         if strand_thickness>0:
             source = ColumnDataSource({'x0':strand_body_x0, 'y0':strand_body_y0, 'x1':strand_body_x1, 'y1':strand_body_y1})
-            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color)
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color_i)
 
             if arrowhead_length<=0:
                 source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
-                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color)
+                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color_i)
 
         if arrowhead_length>0:
             source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
-            arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_thickness, line_color=strand_color, end=VeeHead(size=arrowhead_length, line_color=strand_color,line_width=strand_thickness))
+            arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_thickness, line_color=strand_color_i, end=VeeHead(size=arrowhead_length, line_color=strand_color_i, line_width=strand_thickness))
             fig.add_layout(arrow)
 
         if ca_size>0:
             source = ColumnDataSource({'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'res_id':res_ids})
-            scatter = fig.scatter(source=source, x='ca_x', y='ca_y', color=ca_color, size=ca_size)
+            scatter = fig.scatter(source=source, x='ca_x', y='ca_y', color=ca_color_i, size=ca_size)
             hover = HoverTool(renderers=[scatter], tooltips=[('Ca X', '@ca_x{0.00}Å'), ('Ca Y', '@ca_y{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
 
@@ -384,7 +407,7 @@ def main():
                 pos = ca_pos
                 offset = 0.5*aa_size
             source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
-            fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_size:d}pt', text_color=aa_color, text_baseline="middle", text_align="left", level='overlay')
+            fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_size:d}pt', text_color=aa_color_i, text_baseline="middle", text_align="left", level='overlay')
 
     if warn_bad_ca_dist and len(bad_ca_dist):
         bad_ca_dist.sort(key=lambda x: abs(x[0]-3.8), reverse=True)
@@ -399,6 +422,16 @@ def main():
     st.bokeh_chart(fig, use_container_width=False)
 
     if plot_z_dist:
+        import re
+        if len(center_x_at):
+            center_x_at_aa = re.split('[;,\s]', center_x_at.upper())
+            if len(center_x_at_aa) not in [1, len(chains)]:
+                st.warning("XXX")
+            elif len(center_x_at_aa) == 1:
+                center_x_at_aa *= len(chains)
+        else:
+            center_x_at_aa = []
+
         ymins = []
         ymaxs = []
         for cid, chain in chains:
@@ -408,6 +441,15 @@ def main():
             ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
             com = np.array([res.center_of_mass for res in residues])
             ca_pos_xz, com_xz = unwrap(ca_pos, com, 0 if one_z_plot else center_z) # unwrap the chain to be along x-axis, z-values are preserved
+            if center_x_at_aa:
+                center_x_i = 0
+                for tmp_res_id in range(len(residues)):
+                    if residues[tmp_res_id].id == center_x_at_aa[ci]:
+                        center_x_i = tmp_res_id
+                        break
+                if center_x_i>0:
+                    ca_pos_xz -= ca_pos_xz[center_x_i]
+                    com_xz -= ca_pos_xz[center_x_i]
             ymin = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).min())-1
             ymax = int(np.vstack((ca_pos_xz[:,1], com_xz[:,1])).max())+1
             ymins.append(ymin)
@@ -423,6 +465,15 @@ def main():
             ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
             com = np.array([res.center_of_mass for res in residues])
             ca_pos_xz, com_xz = unwrap(ca_pos, com, 0 if one_z_plot else center_z) # unwrap the chain to be along x-axis, z-values are preserved
+            if center_x_at_aa:
+                center_x_i = 0
+                for tmp_res_id in range(len(residues)):
+                    if residues[tmp_res_id].id == center_x_at_aa[ci]:
+                        center_x_i = tmp_res_id
+                        break
+                if center_x_i>0:
+                    ca_pos_xz -= ca_pos_xz[center_x_i]
+                    com_xz -= ca_pos_xz[center_x_i]
             rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
             strand = [res.strand for res in residues]
             if color_scheme == "Custom":
@@ -452,6 +503,11 @@ def main():
             gap_y0 = []
             gap_x1 = []
             gap_y1 = []
+
+            aa_color_i = aa_colors[ci%len(aa_colors)]
+            ca_color_i = ca_colors[ci%len(ca_colors)]
+            backbone_color_i = backbone_colors[ci%len(backbone_colors)]
+            strand_color_i = strand_colors[ci%len(strand_colors)]
 
             for i in range(len(strand)):
                 ca_dist = np.linalg.norm(ca_pos[i]-ca_pos[i-1])
@@ -484,7 +540,7 @@ def main():
             if one_z_plot and len(figs):
                 fig = figs[-1]
             else:
-                fig = figure(x_axis_label="Chain length (Å)", y_axis_label="Ca Z position (Å)", y_range=(ymin, ymax), match_aspect=True)
+                fig = figure(x_axis_label="Cumulative length of chain projection in XY-plane (Å)", y_axis_label="Ca Z position (Å)", y_range=(ymin, ymax), match_aspect=True)
                 figs.append(fig)
                 fig.frame_width=plot_width
                 fig.xgrid.visible = False
@@ -506,28 +562,28 @@ def main():
                 fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_dash="dotted", line_width=backbone_thickness, line_color=line_color, level='underlay')
 
             source = ColumnDataSource({'x0':nonstrand_x0, 'y0':nonstrand_y0, 'x1':nonstrand_x1, 'y1':nonstrand_y1})
-            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color)
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color_i)
 
             if backbone_thickness>0:
                 source = ColumnDataSource({'x0':strand_body_x0, 'y0':strand_body_y0, 'x1':strand_body_x1, 'y1':strand_body_y1})
-                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color)
+                fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color_i)
                 if strand_thickness<=0:
                     source = ColumnDataSource({'x0':strand_body_x0, 'y0':strand_body_y0, 'x1':strand_body_x1, 'y1':strand_body_y1})
-                    fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color)
+                    fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color_i)
                     source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
-                    fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color)
+                    fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=backbone_thickness, line_color=backbone_color_i)
 
             if strand_thickness>0:
                 source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
-                arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_thickness, line_color=strand_color, end=VeeHead(size=arrowhead_length, line_color=strand_color, line_width=strand_thickness))
+                arrow = Arrow(source=source, x_start='x0', y_start='y0', x_end='x1', y_end='y1', line_width=strand_thickness, line_color=strand_color_i, end=VeeHead(size=arrowhead_length, line_color=strand_color_i, line_width=strand_thickness))
                 fig.add_layout(arrow)
 
                 if arrowhead_length<=0:
                     source = ColumnDataSource({'x0':strand_last_x0, 'y0':strand_last_y0, 'x1':strand_last_x1, 'y1':strand_last_y1})
-                    fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color)
+                    fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=strand_thickness, line_color=strand_color_i)
 
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z':ca_pos_xz[:,1], 'com_x':com_xz[:,0], 'com_z':com_xz[:,1], 'rog':rog, 'color':color, 'strand':strand, 'res_id':res_ids})
-            scatter=fig.scatter(source=source, x='ca_x', y='ca_z', color=ca_color, size=ca_size)
+            scatter=fig.scatter(source=source, x='ca_x', y='ca_z', color=ca_color_i, size=ca_size)
             hover = HoverTool(renderers=[scatter], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Ca Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
 
@@ -568,7 +624,7 @@ def main():
                     pos = ca_pos_xz
                     offset = 0.5*aa_size
                 source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices, 'color':color[aa_mask]})
-                fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_size:d}pt', text_color=aa_color, text_baseline="middle", text_align="left", level='overlay')
+                fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_size:d}pt', text_color=aa_color_i, text_baseline="middle", text_align="left", level='overlay')
 
         if len(figs)>1:
             from bokeh.layouts import column
@@ -576,7 +632,7 @@ def main():
             st.bokeh_chart(figs_all)
         elif len(figs)==1:
             if one_z_plot and len(figs):
-                figs[0].y_range=Range1d(min(ymins), ymax_all + (len(chain_ids) * (ymax_all-ymin_all) * 0.05 + 0.5)  * label_at_top)
+                figs[0].y_range=Range1d(min(ymins)-0.5, ymax_all + (len(chain_ids) * (ymax_all-ymin_all) * 0.05 + 0.5)  * label_at_top)
             st.bokeh_chart(figs[0])
 
     if share_url:
@@ -692,16 +748,16 @@ def color_mapping(seq, color_scheme="Cinema"):
         from bokeh.palettes import Turbo256
         if color_scheme == "Hydrophobicity":
             d = hydrophobicity
-            pallet = Turbo256   # red (hydrophobic) -> blue (hydrophilic)
+            pallet = Turbo256[20:226]   # red (hydrophobic) -> blue (hydrophilic)
         else:
             d = pI
             #pallet = matplotlib colormap: seismic   # red (negative) -> white (neutral) -> blue (positive)
-            pallet = Turbo256[::-1]   # red (negative) -> blue (positive)
+            pallet = Turbo256[::-1][30:236]   # red (negative) -> blue (positive)
         vals = np.array(list(d.values()))
         val_min = vals.min()
         val_max = vals.max()
         for i, aa in enumerate(seq):
-            val_int = int(round((d[aa]-val_min)/(val_max-val_min)*255))
+            val_int = int(round((d[aa]-val_min)/(val_max-val_min)*(len(pallet)-1)))
             ret[i] = pallet[val_int]
         return ret
     for i, aa in enumerate(seq):
@@ -730,9 +786,9 @@ def color_mapping(seq, color_scheme="Cinema"):
             else: ret[i] = 'white'
     return ret
 
-int_types = dict(aa_size=16, arrowhead_length=18, backbone_thickness=3, ca_size=6, center_xy=0, center_z=0, circle_line_thickness=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
+int_types = dict(aa_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_z_per_chain=0, circle_line_thickness=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rotz=0.0)
-other_types = dict(aa_color="black", backbone_color="black", strand_color="black", ca_color="black", show_residue_shape="Side chain", chain_ids=['A'], color_scheme="Cinema", custom_color_scheme="", title="ProCart")
+other_types = dict(aa_color="black", backbone_color="grey", ca_color="black", center_x_at="", chain_ids=['A'], color_scheme="Charge", custom_color_scheme="", show_residue_shape="Side chain", strand_color="black", title="ProCart")
 def set_query_parameters():
     d = {}
     for k in sorted(st.session_state.keys()):
