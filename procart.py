@@ -952,7 +952,7 @@ def get_url():
     _, host = is_hosted(return_host=True)
     if len(host)<1: return None
     if host == "streamlit":
-        url = "https://share.streamlit.io/wjiang/procart/main/"
+        url = "https://procart.streamlit.app/"
     elif host == "heroku":
         url = "https://protein-structure-procart.herokuapp.com/"
     else:
