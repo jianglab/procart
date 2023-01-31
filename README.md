@@ -12,7 +12,7 @@ While the atomic structures of amyloid fibrils, for example, [the structure of T
 * Automatically rotate the model around Z-axis to orient its longest direction along X-axis
 * The backbone is represented as thin line segments connected at the Cα atoms
 * The β-strands are represented by thicker lines and an arrow ended at the last residue of the strand
-* You can choose a coloring scheme from [five presets (Charge, Hydrophobicity, Cinema, Lesk, Clustal)](https://www.bioinformatics.nl/~berndb/aacolour.html) or specify your own coloring scheme to map any chain, sequence range or amino acid to any color
+* You can choose a coloring scheme from five presets ([Charge](https://www.sigmaaldrich.com/US/en/technical-documents/technical-article/protein-biology/protein-structural-analysis/amino-acid-reference-chart), [Hydrophobicity](https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/midas/hydrophob.html), [Cinema, Lesk, Clustal](https://www.bioinformatics.nl/~berndb/aacolour.html)) or specify your own coloring scheme to map any chain, sequence range or amino acid to any color
 * To accurately illustrate the packing of the residues, the residues are presented as the union outline of all atoms in the residue with the size of each atom equal to its van der waals radius.
 * If the user chooses to represent each residue as a circle, the circles will be positioned at the center-of-mass of the entire residue (including backbone and side-chain atoms) with the sizes of the circles proportional to the radius-of-gyration computed for each of the residues
 * The undulation of the chains perpendicular to the XY plane can be displayed in the Z-plot
