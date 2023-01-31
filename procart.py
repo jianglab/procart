@@ -164,6 +164,7 @@ def main():
             center_z = False
             center_z_per_chain = False
             center_zplot_at = ""
+            center_zplot_at_aa = []
             one_z_plot = False
             label_at_top = False
             if plot_z_dist:
