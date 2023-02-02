@@ -138,10 +138,10 @@ def main():
                 chains.append((cid, chain.copy()))
         
         model = atomium.structures.Model(*[chain[1] for chain in chains])
-        rotz_auto = round(auto_rotation_angle(model), 1)
-        rotz = st.number_input('Rotation around Z-axis (°)', value=rotz_auto, min_value=-180.0, max_value=180., step=1.0, key="rotz")
-        if rotz:
-            model.rotate(angle=np.deg2rad(rotz), axis='z')
+        rot_z_auto = round(auto_rotation_angle(model), 1)
+        rot_z = st.number_input('Rotation around Z-axis (°)', value=rot_z_auto, min_value=-180.0, max_value=180., step=1.0, key="rot_z")
+        if rot_z:
+            model.rotate(angle=np.deg2rad(rot_z), axis='z')
 
         show_residue_shape = st.radio('Show residues:', options=["Side chain", "Circle", "Circle (const)", "Blank"], horizontal=True, key="show_residue_shape")
         color_scheme_container = st.container()
@@ -814,8 +814,8 @@ def color_mapping(seq, color_scheme="Cinema"):
             else: ret[i] = 'white'
     return ret
 
-int_types = dict(aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_z_per_chain=0, circle_line_thickness=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
-float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rotz=0.0)
+int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_z_per_chain=0, circle_line_thickness=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
+float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rot_z=0.0)
 other_types = dict(aa_label_color="black", backbone_color="grey", ca_color="black", center_zplot_at="", chain_ids=['A'], color_scheme="Charge", custom_color_scheme="", pdb_id="", show_residue_shape="Side chain", strand_color="black", title="ProCart")
 def set_query_parameters():
     d = {}
