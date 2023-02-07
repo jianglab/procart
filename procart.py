@@ -129,19 +129,8 @@ def main():
             st.warning("Please select at least one chain")
             return
 
-        chains = []
-        for cid in chain_ids:
-            chain = model.chain(cid)
-            if chain is None:
-                st.warning(f"Chain {cid} cannot be found")
-            else:
-                chains.append((cid, chain.copy()))
-        
-        model = atomium.structures.Model(*[chain[1] for chain in chains])
         rot_z_auto = round(auto_rotation_angle(model), 1)
         rot_z = st.number_input('Rotation around Z-axis (°)', value=rot_z_auto, min_value=-180.0, max_value=180., step=1.0, key="rot_z")
-        if rot_z:
-            model.rotate(angle=np.deg2rad(rot_z), axis='z')
 
         show_residue_shape = st.radio('Show residues:', options=["Side chain", "Circle", "Circle (const)", "Blank"], horizontal=True, key="show_residue_shape")
         color_scheme_container = st.container()
@@ -170,22 +159,16 @@ def main():
             if plot_z_dist:
                 one_z_plot = st.checkbox('Plot all Z-plots in one figure', value=True, key="one_z_plot")
                 label_at_top = st.checkbox('Label amino acid at the top of Z-plots', value=True, key="label_at_top")
-                center_zplot_at = st.text_input('Center the Z-plot at', placeholder="A.1 B.2", value="", help="Center the Z-plot at this amino acid of each chain", key="center_zplot_at")
-                if center_zplot_at:
-                    import re
-                    if len(center_zplot_at):
-                        center_zplot_at_aa = re.split('[;,\s]+', center_zplot_at.upper())
-                        if len(center_zplot_at_aa) != len(chains):
-                            st.warning(f"WARNING: {len(chains)} residues should be specified. You have provided {len(center_zplot_at_aa)} in '{center_zplot_at}'")
-                    else:
-                        center_zplot_at_aa = []
+                equal_x = st.checkbox('Use equal spacing in X-axis between amino acids', value=True, key="equal_x")
+                center_z = st.checkbox('Center the structure in Z direction', value=True, key="center_z")
+                if center_z:
+                    center_z_per_chain = st.checkbox('Center each chain in Z direction', value=False, key="center_z_per_chain")
                 else:
-                    center_z = st.checkbox('Center the structure in Z direction', value=True, key="center_z")
-                    if center_z:
-                        center_z_per_chain = st.checkbox('Center each chain in Z direction', value=False, key="center_z_per_chain") 
+                    center_zplot_at = st.text_input('Center the Z-plot at residues', placeholder="A.1 B.2", value="", help="Center the Z-plot at this amino acid of each chain", key="center_zplot_at")
 
-            transparent_background = st.checkbox('Set background transparent', value=True, key="transparent_background")
-            plot_width = int(st.number_input('Plot width (pixel)', value=1000, min_value=100, step=10, key="plot_width"))
+            example = "A: 1-10 17"
+            example+= "\nA,B: 1-10 17"
+            select_aa = st.text_area("Only plot these residues:", value="", height=64, max_chars=None, key="select_aa", help=None, placeholder=example)
 
             circle_size_scale = 1.0
             circle_line_thickness = 1
@@ -221,6 +204,9 @@ def main():
                 strand_color = st.text_input('Strand line color(s)', placeholder="red blue", value="black", help="example: red blue", key="strand_color")
                 strand_thickness = int(st.number_input('Strand line thickness (pixel)', value=6, min_value=0, step=1, key="strand_thickness"))
                 arrowhead_length = int(st.number_input('Arrowhead length (pixel)', value=24, min_value=0, step=1, key="arrowhead_length"))
+            plot_width = int(st.number_input('Plot width (pixel)', value=1000, min_value=100, step=10, key="plot_width"))
+            #transparent_background = st.checkbox('Set background transparent', value=True, key="transparent_background")
+            transparent_background = True
 
         share_url = st.checkbox('Show sharable URL', value=False, help="Include relevant parameters in the browser URL to allow you to share the URL and reproduce the plots", key="share_url")
         if share_url:
@@ -237,6 +223,28 @@ def main():
                 custom_color_scheme_txt = color_scheme_container.text_area("Specify your color scheme:", value="", height=128, max_chars=None, key="custom_color_scheme", help=None, placeholder=example)
         else:
             color_scheme = "Cinema"
+
+    center_zplot_at_aa = []
+    if len(center_zplot_at):
+        import re
+        center_zplot_at_aa = re.split('[;,\s]+', center_zplot_at.upper())
+        if len(center_zplot_at_aa) != len(chains):
+            st.warning(f"WARNING: {len(chains)} residues should be specified. You have provided {len(center_zplot_at_aa)} in '{center_zplot_at}'")
+
+    chains = []
+    for cid in chain_ids:
+        chain = model.chain(cid)
+        if chain is None:
+            st.warning(f"Chain {cid} cannot be found")
+        else:
+            chains.append((cid, chain.copy()))
+
+    if select_aa:
+        chains = select_amino_acids(chains, select_aa)
+    
+    model = atomium.structures.Model(*[chain[1] for chain in chains])
+    if rot_z:
+        model.rotate(angle=np.deg2rad(rot_z), axis='z')
 
     import re
     aa_label_colors = re.split('[;,\s]+', aa_label_color)
@@ -458,6 +466,7 @@ def main():
     if plot_z_dist:
         ymins = []
         ymaxs = []
+        dxs = []
         for ci, (cid, chain) in enumerate(chains):
             residues = [res for res in chain.residues() if res.atoms(name__regex='CA')]
             res_ids = [f"{res.id}{res.code}" for res in residues]
@@ -465,6 +474,8 @@ def main():
             ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
             com = np.array([res.center_of_mass for res in residues])
             ca_pos_xz, com_xz = unwrap(ca_pos, com, 0 if one_z_plot else center_z) # unwrap the chain to be along x-axis, z-values are preserved
+            dxs.append((ca_pos_xz[-1, 0] - ca_pos_xz[0, 0])/(ca_pos_xz.shape[0]-1))
+            dxs.append((com_xz[-1, 0]    - com_xz[0, 0])   /(com_xz.shape[0]-1))
             if center_zplot_at_aa:
                 center_x_i = None
                 for tmp_res_id in range(len(residues)):
@@ -480,6 +491,7 @@ def main():
             ymaxs.append(ymax)
         ymin_all = min(ymins)
         ymax_all = max(ymaxs)
+        dx_all = np.mean(dxs)
 
         figs = []
         for ci, (cid, chain) in enumerate(chains):
@@ -489,6 +501,9 @@ def main():
             ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
             com = np.array([res.center_of_mass for res in residues])
             ca_pos_xz, com_xz = unwrap(ca_pos, com, 0 if one_z_plot else center_z) # unwrap the chain to be along x-axis, z-values are preserved
+            if equal_x:
+                ca_pos_xz[:, 0] = ca_pos_xz[0, 0] + dx_all * np.arange(ca_pos_xz.shape[0])
+                com_xz[:, 0] = com_xz[0, 0] + dx_all * np.arange(com_xz.shape[0])
             if center_zplot_at_aa:
                 center_x_i = None
                 for tmp_res_id in range(len(residues)):
@@ -626,7 +641,7 @@ def main():
                         n_txt_label = len(txt_label)
                         txt_label = f"{cid}: "
                         fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-(n_txt_label-0.5)*(aa_label_size-2), text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="right", level='overlay')
-                    fig.text(x=[ca_pos_xz[-1,0]], y=[ca_pos_xz_top[-1]], text=[f"{residues[-1].id.split('.')[-1]}"], x_offset=0.5*aa_label_size, y_offset=-0.5*aa_label_size, text_font_size=f'{aa_label_size-2:d}pt', text_color="black", text_baseline="middle", text_align="left", level='overlay')
+                    fig.text(x=[ca_pos_xz[-1,0]], y=[ca_pos_xz_top[-1]], text=[f"{residues[-1].id.split('.')[-1]}"], x_offset=0.5*aa_label_size, y_offset=-0.5*aa_label_size, text_font_size=f'{aa_label_size-4:d}pt', text_color="black", text_baseline="middle", text_align="left", level='overlay')
                 elif show_residue_shape != "Blank"  and aa_label_size>0:
                     text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=aa_label_size, text_font_size=f'{aa_label_size:d}pt', text_color="color", text_baseline="middle", text_align="center", level='overlay')
                     hover = HoverTool(renderers=[text], tooltips=[('Chain length', '@ca_x{0.0}Å'), ('Cα Z', '@ca_z{0.00}Å'), ('residue', '@res_id')])
@@ -725,6 +740,35 @@ def auto_rotation_angle(model):
     angle = np.rad2deg(np.arctan2(e_vectors[0, 1], e_vectors[0, 0]))
     return -angle
 
+def select_amino_acids(chains, select_aa):
+    from itertools import product
+    keep = set()
+    for line in select_aa.split("\n"):
+        line = line.strip()
+        if len(line)<1: continue
+        chain_ids, aa_specs = line.split(":")[:2]   # A,B C: 1-17 23
+        chain_ids = [c.upper() for c in chain_ids.replace(",", " ").split()]   # A,B C -> ['A', 'B', 'C']
+        indices = []
+        for aa_spec in aa_specs.split():  # 1-17 23
+            try:
+                n1, n2 = aa_spec.split("-")   # 1-17
+                indices += list(range(int(n1), int(n2)+1))
+            except:
+                try:
+                    indices += [int(aa_spec)]   # 23
+                except:
+                    pass
+        keep.update(set(map(lambda x: f"{x[0]}.{x[1]}", product(chain_ids, indices))))
+    if len(keep)<1: return chains
+
+    ret = []
+    for cid, chain in chains:
+        residues = [res for res in chain if res.id in keep]
+        if residues:
+            new_chain = atomium.Chain(*residues)
+            ret.append((cid, new_chain))
+    return ret
+
 def custom_color_mapping(custom_color_scheme_txt, cid, seq, res_num):
     assert(len(seq) ==  len(res_num))
     ret = ["white"] * len(seq)
@@ -814,9 +858,9 @@ def color_mapping(seq, color_scheme="Cinema"):
             else: ret[i] = 'white'
     return ret
 
-int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_z_per_chain=0, circle_line_thickness=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
+int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_z_per_chain=0, circle_line_thickness=1, equal_x=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rot_z=0.0)
-other_types = dict(aa_label_color="black", backbone_color="grey", ca_color="black", center_zplot_at="", chain_ids=['A'], color_scheme="Charge", custom_color_scheme="", pdb_id="", show_residue_shape="Side chain", strand_color="black", title="ProCart")
+other_types = dict(aa_label_color="black", backbone_color="grey", ca_color="black", center_zplot_at="", chain_ids=['A'], color_scheme="Charge", custom_color_scheme="", pdb_id="", select_aa="", show_residue_shape="Side chain", strand_color="black", title="ProCart")
 def set_query_parameters():
     d = {}
     for k in sorted(st.session_state.keys()):
