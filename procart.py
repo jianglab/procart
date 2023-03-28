@@ -648,11 +648,12 @@ def main():
                     source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos_xz[:,0], 'ca_z_top':ca_pos_xz_top, 'ca_z':ca_pos_xz[:,1], 'color':color, 'res_id':res_ids})
                     text=fig.text(source=source, x='ca_x', y='ca_z_top', text='seq', x_offset=0, text_font_size=f'{aa_label_size:d}pt', text_color="color", text_baseline="middle", text_align="center")
                     txt_label = f"{residues[0].id.split('.')[-1]}"
-                    fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-0.5*aa_label_size, y_offset=-0.5*aa_label_size, text_font_size=f'{aa_label_size-2:d}pt', text_color="black", text_baseline="middle", text_align="right", level='overlay')
+                    fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-0.5*aa_label_size, y_offset=-0.5*aa_label_size, text_font_size=f'{aa_label_size-4:d}pt', text_color="black", text_baseline="middle", text_align="right", level='overlay')
                     if len(chain_ids)>1: 
-                        n_txt_label = len(txt_label)
-                        txt_label = f"{cid}: "
-                        fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-(n_txt_label-0.5)*(aa_label_size-2), text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="right", level='overlay')
+                        n_digits = 1+int(np.floor(np.log10(int(txt_label))))
+                        txt_label = f"{cid}:"
+                        fig.text(x=[ca_pos_xz[0,0]], y=[ca_pos_xz_top[0]], text=[txt_label], x_offset=-(aa_label_size-4)*n_digits, text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="right", level='overlay')
+
                     fig.text(x=[ca_pos_xz[-1,0]], y=[ca_pos_xz_top[-1]], text=[f"{residues[-1].id.split('.')[-1]}"], x_offset=0.5*aa_label_size, y_offset=-0.5*aa_label_size, text_font_size=f'{aa_label_size-4:d}pt', text_color="black", text_baseline="middle", text_align="left", level='overlay')
                 elif show_residue_shape != "Blank"  and aa_label_size>0:
                     text=fig.text(source=source, x='ca_x', y='ca_z', text='seq', x_offset=aa_label_size, text_font_size=f'{aa_label_size:d}pt', text_color="color", text_baseline="middle", text_align="center", level='overlay')
@@ -904,7 +905,7 @@ def parse_query_parameters():
     if "title" not in st.session_state:
         st.session_state.title = "ProCart"
 
-@st.cache(persist=True, show_spinner=False, ttl=24*60*60.) # refresh every day
+@st.cache_data(show_spinner=False, ttl=24*60*60.) # refresh every day
 def get_pdb_ids():
     try:
         url = "ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/entries.idx"
@@ -923,7 +924,7 @@ def get_random_pdb_id():
         if is_valid_pdb_id(pdb_id):
             return pdb_id
 
-@st.experimental_singleton(show_spinner=False)
+@st.cache_data(show_spinner=False)
 def is_valid_pdb_id(pdb_id):
     if len(pdb_id)!=4: return False
     url = f"https://files.rcsb.org/view/{pdb_id.lower()}.cif"
@@ -932,13 +933,13 @@ def is_valid_pdb_id(pdb_id):
         return False
     return True
 
-@st.experimental_singleton(show_spinner=False)
+@st.cache_data(show_spinner=False)
 def get_model_from_pdb(pdb_id):
     import atomium
     model = atomium.fetch(pdb_id)
     return model
 
-@st.experimental_singleton(show_spinner=False, suppress_st_warning=True)
+@st.cache_data(show_spinner=False)
 def get_model_from_url(url):
     url_final = get_direct_url(url)    # convert cloud drive indirect url to direct url
     ds = np.DataSource(None)
@@ -991,7 +992,7 @@ def get_direct_url(url):
     else:
         return url
 
-@st.cache(persist=True, show_spinner=False)
+@st.cache_data(persist=True, show_spinner=False)
 def setup_anonymous_usage_tracking():
     try:
         import pathlib, stat
