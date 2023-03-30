@@ -147,6 +147,7 @@ def main():
             warn_bad_ca_dist = st.checkbox('Warn bad Cα-Cα distances', value=True, key="warn_bad_ca_dist")
             vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
             center_xy = st.checkbox('Center the structure in XY plane', value=True, key="center_xy")
+            circle_to_background_empty = st.empty()
 
             center_z = False
             center_z_per_chain = False
@@ -174,10 +175,11 @@ def main():
             circle_size_scale = 1.0
             circle_line_thickness = 1
             circle_opaque = 0.9
-            if show_residue_shape in ["Circle", "Circle (const)"]:
+            if show_residue_shape not in ["Blank"]:
                 circle_size_scale = st.number_input('Scale circles relative to the residue sizes', value=1.0, min_value=0.1, step=0.1, key="circle_size_scale")
                 circle_line_thickness = int(st.number_input('Circle line width (point)', value=1, min_value=0, step=1, key="circle_line_thickness"))
                 circle_opaque = st.number_input('Opaqueness of the circles', value=0.9, min_value=0., max_value=1.0, step=0.1, key="circle_opaque")
+                circle_to_background = circle_to_background_empty.checkbox('Send circles to background', value=True, key="circle_to_background")
 
             aa_label_color = ""
             aa_label_size = 0
@@ -373,7 +375,7 @@ def main():
 
         if show_residue_shape in ['Circle', 'Circle (const)']:
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'com_x':com[:,0], 'com_y':com[:,1], 'rog':rog, 'color':color, 'strand':strand, 'res_id':res_ids})
-            circle = fig.circle(source=source, x='com_x', y='com_y', radius='rog', radius_units='data', line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque, level='underlay')
+            circle = fig.circle(source=source, x='com_x', y='com_y', radius='rog', radius_units='data', line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque, level='underlay' if circle_to_background else 'overlay')
             hover = HoverTool(renderers=[circle], tooltips=[('COM X', '@com_x{0.00}Å'), ('COM Y', '@com_y{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
         elif show_residue_shape == 'Side chain':
@@ -395,7 +397,7 @@ def main():
                 return x, y
             mp_x, mp_y = chain_to_bokeh_multi_polygon(chain, scale_factor=circle_size_scale)
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'x':mp_x, 'y':mp_y, 'com_x':com[:,0], 'com_y':com[:,1], 'color':color, 'strand':strand, 'res_id':res_ids})
-            side_chain = fig.multi_polygons('x', 'y', source=source,  line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque, level='underlay')
+            side_chain = fig.multi_polygons('x', 'y', source=source,  line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque, level='underlay' if circle_to_background else 'overlay')
             hover = HoverTool(renderers=[side_chain], tooltips=[('COM X', '@com_x{0.00}Å'), ('COM Y', '@com_y{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
 
@@ -871,7 +873,7 @@ def color_mapping(seq, color_scheme="Cinema"):
             else: ret[i] = 'white'
     return ret
 
-int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_zplot_at_aa_x=0, center_zplot_at_aa_z=0, circle_line_thickness=1, equal_x=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
+int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_zplot_at_aa_x=0, center_zplot_at_aa_z=0, circle_line_thickness=1, circle_to_background=1, equal_x=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rot_x=0.0, rot_z=0.0)
 other_types = dict(aa_label_color="black", backbone_color="grey", ca_color="black", center_zplot_at="", chain_ids=['A'], color_scheme="Charge", custom_color_scheme="", pdb_id="", select_aa="", show_residue_shape="Side chain", strand_color="black", title="ProCart")
 def set_query_parameters():
