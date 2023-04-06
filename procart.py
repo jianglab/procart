@@ -139,6 +139,7 @@ def main():
         plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=False, key="plot_z_dist")
 
         with st.expander(label=f"Additional settings", expanded=False):
+            save_svg = st.checkbox('Save plots in svg format', value=True, help="save plots in SVG (vector format) if checked or png (pixel format) if unchecked", key="save_svg")
             show_axes = st.checkbox('Show the axes', value=True, key="show_axes")
             show_backbone = st.checkbox('Show backbone of the chains', value=True, key="show_backbone")
             show_ca = st.checkbox('Show Cα of the residues', value=True, key="show_ca")
@@ -277,6 +278,7 @@ def main():
     from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead, HoverTool, Range1d
 
     fig = figure(x_axis_label="X position (Å)", y_axis_label="Y position (Å)", match_aspect=True)
+    if save_svg: fig.output_backend = "svg"
     fig.frame_width=plot_width
     fig.xgrid.visible = False
     fig.ygrid.visible = False
@@ -595,6 +597,7 @@ def main():
             else:
                 fig = figure(x_axis_label="Cumulative length of chain projection in XY-plane (Å)", y_axis_label="Cα Z position (Å)", y_range=(ymin, ymax), match_aspect=True)
                 figs.append(fig)
+                if save_svg: fig.output_backend = "svg"
                 fig.frame_width=plot_width
                 fig.xgrid.visible = False
                 fig.ygrid.visible = False
@@ -873,7 +876,7 @@ def color_mapping(seq, color_scheme="Cinema"):
             else: ret[i] = 'white'
     return ret
 
-int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_zplot_at_aa_x=0, center_zplot_at_aa_z=0, circle_line_thickness=1, circle_to_background=1, equal_x=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
+int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_zplot_at_aa_x=0, center_zplot_at_aa_z=0, circle_line_thickness=1, circle_to_background=1, equal_x=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, save_svg=1, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rot_x=0.0, rot_z=0.0)
 other_types = dict(aa_label_color="black", backbone_color="grey", ca_color="black", center_zplot_at="", chain_ids=['A'], color_scheme="Charge", custom_color_scheme="", pdb_id="", select_aa="", show_residue_shape="Side chain", strand_color="black", title="ProCart")
 def set_query_parameters():
