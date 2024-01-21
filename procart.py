@@ -1,7 +1,7 @@
 """ 
 MIT License
 
-Copyright (c) 2021-2023 Wen Jiang
+Copyright (c) 2021-2024 Wen Jiang
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -67,7 +67,7 @@ def main():
         pdb = None
         if input_mode == 0: # "upload a PDB file":
             label = "Upload a PDB file"
-            fileobj = st.file_uploader(label, type=['pdb'], help=None, key="file_upload")
+            fileobj = st.file_uploader(label, type=['pdb', 'cif'], help=None, key="file_upload")
             if fileobj is not None:
                 pdb = get_model_from_uploaded_file(fileobj)
         elif input_mode == 1: # "url":
@@ -702,7 +702,7 @@ def main():
             qr_image = qr_code()
             st.image(qr_image)
     else:
-        st.experimental_set_query_params()
+        st.query_params.clear()
 
     st.markdown("*Developed by the [Jiang Lab@Purdue University](https://jiang.bio.purdue.edu/procart). Report problems to Wen Jiang (jiang12 at purdue.edu)*")
 
@@ -892,28 +892,29 @@ def set_query_parameters():
         elif k in other_types:
             if v==other_types[k]: continue
         d[k] = v
-    st.experimental_set_query_params(**d)
+    st.query_params.update(d)
 
 def parse_query_parameters():
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     for attr in query_params:
         if attr == "title":
-            st.session_state.title = query_params[attr][0]
+            st.session_state.title = query_params[attr]
         elif attr == "chain_ids":
-            st.session_state.chain_ids = query_params[attr]
+            st.session_state.chain_ids = query_params.get_all(attr)
         elif attr in int_types:
-            st.session_state[attr] = int(float(query_params[attr][0]))
+            st.session_state[attr] = int(float(query_params[attr]))
         elif attr in float_types:
-            st.session_state[attr] = float(query_params[attr][0])
+            st.session_state[attr] = float(query_params[attr])
         else:
-            st.session_state[attr] = query_params[attr][0]
+            st.session_state[attr] = query_params[attr]
     if "title" not in st.session_state:
         st.session_state.title = "ProCart"
 
 @st.cache_data(show_spinner=False, ttl=24*60*60.) # refresh every day
 def get_pdb_ids():
     try:
-        url = "ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/entries.idx"
+        #url = "ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/entries.idx"
+        url ="https://s3.rcsb.org/pub/pdb/derived_data/index/entries.idx"
         ds = np.DataSource(None)
         with ds.open(url) as fp:
             pdb_ids = [line[:4] for line in fp.readlines()[2:] if len(line) > 4]
@@ -1048,8 +1049,8 @@ def get_url():
     else:
         url = f"http://{host}:8501/"
     import urllib
-    params = st.experimental_get_query_params()
-    d = {k:params[k][0] for k in params}
+    params = st.query_params
+    d = {k:params[k] for k in params}
     url += "?" + urllib.parse.urlencode(d)
     return url
 
