@@ -40,6 +40,7 @@ import_with_auto_install(required_packages)
 
 import streamlit as st
 import numpy as np
+np.bool8 = bool  # fix for bokeh 2.4.3
 import atomium
 
 #from memory_profiler import profile
@@ -171,7 +172,7 @@ def main():
 
             example = "A: 1-10 17"
             example+= "\nA,B: 1-10 17"
-            select_aa = st.text_area("Only plot these residues:", value="", height=64, max_chars=None, key="select_aa", help=None, placeholder=example)
+            select_aa = st.text_area("Only plot these residues:", value="", height=72, max_chars=None, key="select_aa", help=None, placeholder=example)
 
             circle_size_scale = 1.0
             circle_line_thickness = 1
@@ -242,7 +243,7 @@ def main():
     center_zplot_at_aa = []
     if len(center_zplot_at):
         import re
-        center_zplot_at_aa = re.split('[;,\s]+', center_zplot_at.upper())
+        center_zplot_at_aa = re.split(r'[;,\s]+', center_zplot_at.upper())
         if len(center_zplot_at_aa) != len(chains):
             center_zplot_at_container.error(f"ERROR: {len(chains)} residues (one per chain) should be specified. You have provided {len(center_zplot_at_aa)} in '{center_zplot_at}'")
             return
@@ -254,10 +255,10 @@ def main():
         model.rotate(angle=np.deg2rad(rot_x), axis='x')
 
     import re
-    aa_label_colors = re.split('[;,\s]+', aa_label_color)
-    ca_colors = re.split('[;,\s]+', ca_color)
-    backbone_colors = re.split('[;,\s]+', backbone_color)
-    strand_colors = re.split('[;,\s]+', strand_color)
+    aa_label_colors = re.split(r'[;,\s]+', aa_label_color)
+    ca_colors = re.split(r'[;,\s]+', ca_color)
+    backbone_colors = re.split(r'[;,\s]+', backbone_color)
+    strand_colors = re.split(r'[;,\s]+', strand_color)
 
     if vflip: vflip_model(model)
 
@@ -446,7 +447,7 @@ def main():
             if len(residues)-1 not in aa_mask: aa_mask += [len(residues)-1]
             if aa_indice_text:
                 import re
-                aa_indices_extra = re.split('[;,\s]+', aa_indice_text.strip().upper())
+                aa_indices_extra = re.split(r'[;,\s]+', aa_indice_text.strip().upper())
                 aa_mask += [ri for ri, res in enumerate(residues) if res.id in aa_indices_extra]
             if show_residue_shape != "Blank":
                 aa_indices = [residues[i].id.split('.')[-1] for i in aa_mask]
@@ -671,7 +672,7 @@ def main():
                 if len(residues)-1 not in aa_mask: aa_mask += [len(residues)-1]
                 if aa_indice_text:
                     import re
-                    aa_indices_extra = re.split('[;,\s]+', aa_indice_text.strip().upper())
+                    aa_indices_extra = re.split(r'[;,\s]+', aa_indice_text.strip().upper())
                     aa_mask += [ri for ri, res in enumerate(residues) if res.id in aa_indices_extra]
                 if show_residue_shape != "Blank" or label_at_top:
                     if label_at_top:
@@ -915,10 +916,11 @@ def get_pdb_ids():
     try:
         #url = "ftp://ftp.wwpdb.org/pub/pdb/derived_data/index/entries.idx"
         url ="https://s3.rcsb.org/pub/pdb/derived_data/index/entries.idx"
-        ds = np.DataSource(None)
+        ds = np.lib.npyio.DataSource(None)
         with ds.open(url) as fp:
             pdb_ids = [line[:4] for line in fp.readlines()[2:] if len(line) > 4]
-    except:
+    except Exception as e:
+        print(e)
         pdb_ids = None
     return pdb_ids
 
@@ -934,7 +936,7 @@ def get_random_pdb_id():
 def is_valid_pdb_id(pdb_id):
     if len(pdb_id)!=4: return False
     url = f"https://files.rcsb.org/view/{pdb_id.lower()}.cif"
-    ds = np.DataSource(None)
+    ds = np.lib.npyio.DataSource(None)
     if not ds.exists(url):
         return False
     return True
@@ -948,7 +950,7 @@ def get_model_from_pdb(pdb_id):
 @st.cache_data(show_spinner=False)
 def get_model_from_url(url):
     url_final = get_direct_url(url)    # convert cloud drive indirect url to direct url
-    ds = np.DataSource(None)
+    ds = np.lib.npyio.DataSource(None)
     if not ds.exists(url_final):
         st.error(f"ERROR: {url} could not be downloaded. If this url points to a cloud drive file, make sure the link is a direct download link instead of a link for preview")
         st.stop()
