@@ -146,6 +146,8 @@ def main():
             show_ca = st.checkbox('Show Cα of the residues', value=True, key="show_ca")
             show_aa_indices = st.checkbox('Show amino acid indices', value=True, key="show_aa_indices")
             show_gap = st.checkbox('Show gaps in the model', value=True, key="show_gap")
+            show_ssbond = st.checkbox('Show disulfide bonds between cysteines', value=True, key="show_ssbond")
+            hide_backbone_in_side_chain_shapes = st.checkbox('Hide backbone atoms (CA,C,N,O) when plotting side chain shapes', value=False, key="hide_backbone_in_side_chain_shapes")
             warn_bad_ca_dist = st.checkbox('Warn bad Cα-Cα distances', value=True, key="warn_bad_ca_dist")
             vflip = st.checkbox('Vertically flip the XY-plot', value=False, key="vflip")
             center_xy = st.checkbox('Center the structure in XY plane', value=True, key="center_xy")
@@ -382,7 +384,7 @@ def main():
             hover = HoverTool(renderers=[circle], tooltips=[('COM X', '@com_x{0.00}Å'), ('COM Y', '@com_y{0.00}Å'), ('residue', '@res_id')])
             fig.add_tools(hover)
         elif show_residue_shape == 'Side chain':
-            def chain_to_bokeh_multi_polygon(chain, scale_factor=1.0):
+            def chain_to_bokeh_multi_polygon(chain, scale_factor=1.0, hide_backbone_in_side_chain_shapes=False):
                 # https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/midas/vdwtables.html
                 radii = dict(C=1.88, N=1.64, O=1.46, S=1.77, H=1.0, P=1.87, F=1.56, Cl=1.735, Br=1.978, I=2.094)
                 if scale_factor!=1.0:
@@ -393,12 +395,16 @@ def main():
                 y = []
                 for res in chain.residues():
                     if not res.atoms(name__regex='CA'): continue
-                    p = unary_union([Point(a.location[0], a.location[1]).buffer(radii[a.name[0]]) for a in res.atoms()])
+                    if not hide_backbone_in_side_chain_shapes:
+                        p = unary_union([Point(a.location[0], a.location[1]).buffer(radii[a.name[0]]) for a in res.atoms()])
+                    else:
+                        p = unary_union([Point(a.location[0], a.location[1]).buffer(radii[a.name[0]]) for a in set(res.atoms(name__regex='(?!^(CA|O|C|N)$)'))])
+                    if not p: continue
                     tmp_x, tmp_y = p.exterior.xy
                     x += [[[tmp_x.tolist()]]]
                     y += [[[tmp_y.tolist()]]]
                 return x, y
-            mp_x, mp_y = chain_to_bokeh_multi_polygon(chain, scale_factor=circle_size_scale)
+            mp_x, mp_y = chain_to_bokeh_multi_polygon(chain, scale_factor=circle_size_scale, hide_backbone_in_side_chain_shapes=hide_backbone_in_side_chain_shapes)
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'x':mp_x, 'y':mp_y, 'com_x':com[:,0], 'com_y':com[:,1], 'color':color, 'strand':strand, 'res_id':res_ids})
             side_chain = fig.multi_polygons('x', 'y', source=source,  line_width=max(1, int(circle_line_thickness)), line_color="black", fill_color='color', fill_alpha=circle_opaque, level='underlay' if circle_to_background else 'overlay')
             hover = HoverTool(renderers=[side_chain], tooltips=[('COM X', '@com_x{0.00}Å'), ('COM Y', '@com_y{0.00}Å'), ('residue', '@res_id')])
@@ -459,6 +465,30 @@ def main():
                 offset = 0.5*aa_label_size
             source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
             fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_label_size:d}pt', text_color=aa_label_color_i, text_baseline="middle", text_align="left", level='overlay')
+    
+    if show_ssbond:
+        if input_mode==0:
+            fileobj.seek(0)
+            lines = fileobj.getvalue().decode('utf-8').split('\n')
+            ssbond_x0 = []
+            ssbond_y0 = []
+            ssbond_x1 = []
+            ssbond_y1 = []
+            for line in lines:
+                if line.strip()[0:6] == "SSBOND":
+                   print(line)
+                   splitted = line.split()
+                   if (splitted[3] in chain_ids) and (splitted[6] in chain_ids):
+                       atom_0 = model.chain(splitted[3]).residue(splitted[3]+'.'+splitted[4]).atom(name='SG')
+                       atom_1 = model.chain(splitted[6]).residue(splitted[6]+'.'+splitted[7]).atom(name='SG')
+                       ssbond_x0.append(atom_0.location[0])
+                       ssbond_y0.append(atom_0.location[1])
+                       ssbond_x1.append(atom_1.location[0])
+                       ssbond_y1.append(atom_1.location[1])
+                       
+            source = ColumnDataSource({'x0':ssbond_x0, 'y0':ssbond_y0, 'x1':ssbond_x1, 'y1':ssbond_y1})           
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=1, line_color='black',line_dash='dashed')   
+                   
 
     if warn_bad_ca_dist and len(bad_ca_dist):
         bad_ca_dist.sort(key=lambda x: abs(x[0]-3.8), reverse=True)
@@ -877,7 +907,7 @@ def color_mapping(seq, color_scheme="Cinema"):
             else: ret[i] = 'white'
     return ret
 
-int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_zplot_at_aa_x=0, center_zplot_at_aa_z=0, circle_line_thickness=1, circle_to_background=1, equal_x=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, save_svg=1, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
+int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_zplot_at_aa_x=0, center_zplot_at_aa_z=0, circle_line_thickness=1, circle_to_background=1, equal_x=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, save_svg=1, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ssbond=1, hide_backbone_in_side_chain_shapes=0, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rot_x=0.0, rot_z=0.0)
 other_types = dict(aa_label_color="black", backbone_color="grey", ca_color="black", center_zplot_at="", chain_ids=['A'], color_scheme="Charge", custom_color_scheme="", pdb_id="", select_aa="", show_residue_shape="Side chain", strand_color="black", title="ProCart")
 def set_query_parameters():
