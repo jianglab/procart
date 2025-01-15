@@ -483,7 +483,7 @@ def main():
             ssbond_y1 = []
             for line in lines:
                 if line.strip()[0:6] == "SSBOND":
-                   print(line)
+                   #print(line)
                    splitted = line.split()
                    if (splitted[3] in chain_ids) and (splitted[6] in chain_ids):
                        atom_0 = model.chain(splitted[3]).residue(splitted[3]+'.'+splitted[4]).atom(name='SG')
