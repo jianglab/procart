@@ -1026,7 +1026,7 @@ def get_model_from_uploaded_file(fileobj):
     import os, tempfile
     orignal_filename = fileobj.name
     suffix = os.path.splitext(orignal_filename)[-1]
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp:
+    with tempfile.NamedTemporaryFile(suffix=suffix) as temp:
         temp.write(fileobj.read())
         return get_model_from_file(temp.name)
 
