@@ -152,6 +152,7 @@ def main():
                 if not use_backbone_setting_ssbond:
                     ssbond_thickness = int(st.number_input('Disulfide bond line thickness (pixel)', value=3, min_value=0, step=1, key="ssbond_thickness"))
                     ssbond_endpoint_size = int(st.number_input('Disulfide bond marker size (pixel)', value=6, min_value=0, step=1, key="ssbond_endpoint_size"))
+                ssbond_dash_pattern = st.selectbox('Disulfide bond line pattern',('dashed','solid'))
                 ssbond_color = st.text_input('Disulifde bond line color', placeholder="grey", value="grey", help="example: grey", key="ssbond_color")
                 ssbond_endpoint_color = st.text_input('Disulfide bond marker color', placeholder="black", value="black", help="example: grey", key="ssbond_endpoint_color")
             hide_backbone_in_side_chain_shapes = st.checkbox('Hide backbone atoms (CA,C,N,O) when plotting side chain shapes', value=False, key="hide_backbone_in_side_chain_shapes")
@@ -505,7 +506,7 @@ def main():
                 final_ssbond_endpoint_size = ssbond_endpoint_size  
 
             source = ColumnDataSource({'x0':ssbond_x0, 'y0':ssbond_y0, 'x1':ssbond_x1, 'y1':ssbond_y1})           
-            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=final_ssbond_thickness, line_color=ssbond_color,line_dash='dashed')   
+            fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_width=final_ssbond_thickness, line_color=ssbond_color,line_dash=ssbond_dash_pattern)   
             
             if ca_size>0:
                 scatter = fig.scatter(source=source, x='x0', y='y0', color=ssbond_endpoint_color, size=final_ssbond_endpoint_size)
@@ -930,7 +931,7 @@ def color_mapping(seq, color_scheme="Cinema"):
 
 int_types = dict(aa_indice_step=10, aa_label_size=14, arrowhead_length=24, backbone_thickness=3, ca_size=6, center_xy=1, center_z=1, center_zplot_at_aa_x=0, center_zplot_at_aa_z=0, circle_line_thickness=1, circle_to_background=1, equal_x=1, input_mode=2, label_at_top=1, one_z_plot=1, plot_width=1000, plot_z_dist=0, random_pdb_id=0, save_svg=1, share_url=0, show_aa_indices=1, show_axes=1, show_backbone=1, show_ssbond=1, use_backbone_setting_ssbond=1, ssbond_thickness=3, ssbond_endpoint_size=6, hide_backbone_in_side_chain_shapes=0, show_ca=1, show_gap=1, show_qr=0, strand_thickness=6, transparent_background=1, vflip=0, warn_bad_ca_dist=1)
 float_types = dict(circle_opaque=0.9, circle_size_scale=1.0, rot_x=0.0, rot_z=0.0)
-other_types = dict(aa_label_color="black", backbone_color="grey", ssbond_color="grey", ssbond_endpoint_color="black", ca_color="black", center_zplot_at="", chain_ids=['A'], color_scheme="Charge", custom_color_scheme="", pdb_id="", select_aa="", show_residue_shape="Side chain", strand_color="black", title="ProCart")
+other_types = dict(aa_label_color="black", backbone_color="grey", ssbond_color="grey",ssbond_dash_pattern="dashed", ssbond_endpoint_color="black", ca_color="black", center_zplot_at="", chain_ids=['A'], color_scheme="Charge", custom_color_scheme="", pdb_id="", select_aa="", show_residue_shape="Side chain", strand_color="black", title="ProCart")
 def set_query_parameters():
     d = {}
     for k in sorted(st.session_state.keys()):
@@ -1025,7 +1026,7 @@ def get_model_from_uploaded_file(fileobj):
     import os, tempfile
     orignal_filename = fileobj.name
     suffix = os.path.splitext(orignal_filename)[-1]
-    with tempfile.NamedTemporaryFile(suffix=suffix) as temp:
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp:
         temp.write(fileobj.read())
         return get_model_from_file(temp.name)
 
