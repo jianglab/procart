@@ -756,7 +756,7 @@ def main():
     else:
         st.query_params.clear()
 
-    st.markdown("*Developed by the [Jiang Lab@Purdue University](https://jiang.bio.purdue.edu/procart). Report problems to Wen Jiang (jiang12 at purdue.edu)*")
+    st.markdown("*Developed by the [Jiang Lab@Penn State](https://jianglab.science.psu.edu/procart/). Report problems to Wen Jiang (wen.jiang at psu.edu)*")
 
     hide_streamlit_style = """
     <style>
