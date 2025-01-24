@@ -134,17 +134,17 @@ def main():
         rot_z = st.number_input('Rotation around Z-axis (°)', value=rot_z_auto, min_value=-180.0, max_value=180., step=1.0, key="rot_z")
         rot_x = st.number_input('Rotation around X-axis (°)', value=0.0, min_value=-180.0, max_value=180., step=1.0, key="rot_x")
 
-        show_residue_shape = st.radio('Show residues:', options=["Side chain", "Circle", "Circle (const)", "Blank"], horizontal=True, key="show_residue_shape")
+        show_residue_shape = st.radio('Show residues:', options=["Side chain", "Circle", "Circle (const)", "Blank"], index=2, horizontal=True, key="show_residue_shape")
         color_scheme_container = st.container()
 
         plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=False, key="plot_z_dist")
 
         with st.expander(label=f"Additional settings", expanded=False):
             save_svg = st.checkbox('Save plots in svg format', value=True, help="save plots in SVG (vector format) if checked or png (pixel format) if unchecked", key="save_svg")
-            show_axes = st.checkbox('Show the axes', value=True, key="show_axes")
+            show_axes = st.checkbox('Show the axes', value=False, key="show_axes")
             show_backbone = st.checkbox('Show backbone of the chains', value=True, key="show_backbone")
             show_ca = st.checkbox('Show Cα of the residues', value=True, key="show_ca")
-            show_aa_indices = st.checkbox('Show amino acid indices', value=True, key="show_aa_indices")
+            show_aa_indices = st.checkbox('Show amino acid indices', value=False, key="show_aa_indices")
             show_gap = st.checkbox('Show gaps in the model', value=True, key="show_gap")
             show_ssbond = st.checkbox('Show disulfide bonds between cysteines', value=True, key="show_ssbond")
             if show_ssbond:
@@ -152,8 +152,8 @@ def main():
                 if not use_backbone_setting_ssbond:
                     ssbond_thickness = int(st.number_input('Disulfide bond line thickness (pixel)', value=3, min_value=0, step=1, key="ssbond_thickness"))
                     ssbond_endpoint_size = int(st.number_input('Disulfide bond marker size (pixel)', value=6, min_value=0, step=1, key="ssbond_endpoint_size"))
-                ssbond_dash_pattern = st.selectbox('Disulfide bond line pattern',('dashed','solid'))
-                ssbond_color = st.text_input('Disulifde bond line color', placeholder="grey", value="grey", help="example: grey", key="ssbond_color")
+                ssbond_dash_pattern = st.selectbox('Disulfide bond line pattern',('solid','dashed'))
+                ssbond_color = st.text_input('Disulifde bond line color', placeholder="black", value="black", help="example: grey", key="ssbond_color")
                 ssbond_endpoint_color = st.text_input('Disulfide bond marker color', placeholder="black", value="black", help="example: grey", key="ssbond_endpoint_color")
             hide_backbone_in_side_chain_shapes = st.checkbox('Hide backbone atoms (CA,C,N,O) when plotting side chain shapes', value=False, key="hide_backbone_in_side_chain_shapes")
             warn_bad_ca_dist = st.checkbox('Warn bad Cα-Cα distances', value=True, key="warn_bad_ca_dist")
@@ -190,8 +190,8 @@ def main():
             if show_residue_shape not in ["Blank"]:
                 circle_size_scale = st.number_input('Scale circles relative to the residue sizes', value=1.0, min_value=0.1, step=0.1, key="circle_size_scale")
                 circle_line_thickness = int(st.number_input('Circle line width (point)', value=1, min_value=0, step=1, key="circle_line_thickness"))
-                circle_opaque = st.number_input('Opaqueness of the circles', value=0.9, min_value=0., max_value=1.0, step=0.1, key="circle_opaque")
-                circle_to_background = circle_to_background_empty.checkbox('Send circles to background', value=True, key="circle_to_background")
+                circle_opaque = st.number_input('Opaqueness of the circles', value=1.0, min_value=0., max_value=1.0, step=0.1, key="circle_opaque")
+                circle_to_background = circle_to_background_empty.checkbox('Send circles to background', value=False, key="circle_to_background")
 
             aa_label_color = ""
             aa_label_size = 0
@@ -214,7 +214,7 @@ def main():
             strand_thickness = 0
             arrowhead_length = 0
             if show_backbone:
-                backbone_color = st.text_input('Backbone line color(s)', placeholder="red blue", value="grey", help="example: red blue", key="backbone_color")
+                backbone_color = st.text_input('Backbone line color(s)', placeholder="red blue", value="black", help="example: red blue", key="backbone_color")
                 backbone_thickness = int(st.number_input('Backbone line thickness (pixel)', value=3, min_value=0, step=1, key="backbone_thickness"))
                 strand_color = st.text_input('Strand line color(s)', placeholder="red blue", value="black", help="example: red blue", key="strand_color")
                 strand_thickness = int(st.number_input('Strand line thickness (pixel)', value=6, min_value=0, step=1, key="strand_thickness"))
@@ -230,12 +230,13 @@ def main():
             show_qr = False
 
         if show_residue_shape != 'Blank' or label_at_top:
-            color_scheme = color_scheme_container.radio('Choose a coloring scheme:', options=["Charge", "Hydrophobicity", "Cinema", "Lesk", "Clustal", "Custom"], horizontal=True, key="color_scheme")
+            color_scheme = color_scheme_container.radio('Choose a coloring scheme:', options=["Charge", "Hydrophobicity", "Cinema", "Lesk", "Clustal", "Custom"], index=5, horizontal=True, key="color_scheme")
             if color_scheme == "Custom":
                 example = "white 1-10=red 17=blue L,W=yellow P=cyan"
                 example+= "\nA: white 1-10=red 17=blue L,W=yellow P=cyan"
                 example+= "\nA,B: white 1-10=red 17=blue L,W=yellow P=cyan"
-                custom_color_scheme_txt = color_scheme_container.text_area("Specify your color scheme:", value="", height=128, max_chars=None, key="custom_color_scheme", help=None, placeholder=example)
+                default_scheme_txt = "A,V,I,L,F,Y,W=white\nK,R,H=#3686d4\nE,D=red\nG,P=lightpink\nM,C=yellow\nQ,S,N,T=green"
+                custom_color_scheme_txt = color_scheme_container.text_area("Specify your color scheme:", value=default_scheme_txt, height=128, max_chars=None, key="custom_color_scheme", help=None, placeholder=example)
         else:
             color_scheme = "Cinema"
 
