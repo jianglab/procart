@@ -1,7 +1,7 @@
 """ 
 MIT License
 
-Copyright (c) 2021-2024 Wen Jiang
+Copyright (c) 2021-2025 Wen Jiang
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -757,8 +757,10 @@ def main():
             st.image(qr_image)
     else:
         st.query_params.clear()
+    
+    st.markdown("*Please cite:*  \nHoq, M. R., Bharath, S. R., Hallinan, G. I., Fernandez, A., Vago, F. S., Ozcan, K. A., Li, D., Garringer, H. J., Vidal, R., Ghetti, B., & Jiang, W. (2023). Cross-β helical filaments of Tau and TMEM106B in gray and white matter of multiple system tauopathy with presenile dementia. Acta Neuropathologica. 145(5):707-710. https://doi.org/10.1007/s00401-023-02563-3")
 
-    st.markdown("*Developed by the [Jiang Lab@Penn State](https://jianglab.science.psu.edu/procart/). Report problems to Wen Jiang (wen.jiang at psu.edu)*")
+    st.markdown("*Developed by the [Jiang Lab@Penn State](https://jianglab.science.psu.edu/procart/). Report issues to Wen Jiang (wen.jiang at psu.edu)*")
 
     hide_streamlit_style = """
     <style>

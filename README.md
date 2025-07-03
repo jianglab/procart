@@ -18,3 +18,8 @@ While the atomic structures of amyloid fibrils, for example, [the structure of T
 * The undulation of the chains perpendicular to the XY plane can be displayed in the Z-plot
 * Mouse hovering over the residues will display the coordinates and the amino acid identity in the tooltips
 * The plots can be shared/reproduced via a URL displayed in the browser address bar or a QR code displayed below the plots
+
+## Citation
+There is no separate publication dedicated to the ProCart Web app. If you have found ProCart useful, please cite the following manuscript for which ProCart was initially developed to present the TMEM106B atomic models:
+
+Hoq, M. R., Bharath, S. R., Hallinan, G. I., Fernandez, A., Vago, F. S., Ozcan, K. A., Li, D., Garringer, H. J., Vidal, R., Ghetti, B., & Jiang, W. (2023). Cross-β helical filaments of Tau and TMEM106B in gray and white matter of multiple system tauopathy with presenile dementia. Acta Neuropathologica. 145(5):707-710. https://doi.org/10.1007/s00401-023-02563-3
