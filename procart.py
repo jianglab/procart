@@ -134,7 +134,7 @@ def main():
         rot_z = st.number_input('Rotation around Z-axis (°)', value=rot_z_auto, min_value=-180.0, max_value=180., step=1.0, key="rot_z")
         rot_x = st.number_input('Rotation around X-axis (°)', value=0.0, min_value=-180.0, max_value=180., step=1.0, key="rot_x")
 
-        show_residue_shape = st.radio('Show residues:', options=["Side chain", "Circle", "Circle (const)", "Blank"], index=2, horizontal=True, key="show_residue_shape")
+        show_residue_shape = st.radio('Show residues:', options=["Side chain", "Circle", "Circle (const)", "Blank"], index=0, horizontal=True, key="show_residue_shape")
         color_scheme_container = st.container()
 
         plot_z_dist = st.checkbox('Plot Z-postions of the residues', value=False, key="plot_z_dist")
@@ -191,7 +191,7 @@ def main():
                 circle_size_scale = st.number_input('Scale circles relative to the residue sizes', value=1.0, min_value=0.1, step=0.1, key="circle_size_scale")
                 circle_line_thickness = int(st.number_input('Circle line width (point)', value=1, min_value=0, step=1, key="circle_line_thickness"))
                 circle_opaque = st.number_input('Opaqueness of the circles', value=1.0, min_value=0., max_value=1.0, step=0.1, key="circle_opaque")
-                circle_to_background = circle_to_background_empty.checkbox('Send circles to background', value=False, key="circle_to_background")
+                circle_to_background = circle_to_background_empty.checkbox('Send circles to background', value=True, key="circle_to_background")
 
             aa_label_color = ""
             aa_label_size = 0
@@ -204,6 +204,7 @@ def main():
                 ca_color = st.text_input('Cα color(s)', placeholder="red blue", value="black", help="example: red blue", key="ca_color")
                 aa_label_size = int(st.number_input('Amino acid label size (pixel)', value=14, min_value=0, step=1, key="aa_label_size"))
                 aa_label_color = st.text_input('Amino acid label color(s)', placeholder="red blue", value="black", help="example: red blue", key="aa_label_color")
+                aa_label_on_cb_instead = st.checkbox('Put amino acid labels on Cβ', value=True, key="aa_label_on_cb_instead")
                 if show_aa_indices:
                     aa_indice_step = int(st.number_input('Show indices every n resiudes', value=10, min_value=1, step=1, key="aa_indice_step"))
                     aa_indice_text = st.text_input("Show indices of these residues:", placeholder="A.13 B.27", value="", help=None, key="aa_indice_text")
@@ -287,7 +288,7 @@ def main():
                 chain.translate(dz=-com_model[2])
 
     from bokeh.plotting import figure
-    from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead, HoverTool, Range1d
+    from bokeh.models import ColumnDataSource, Span, Arrow, VeeHead, HoverTool, Range1d, LabelSet
 
     fig = figure(x_axis_label="X position (Å)", y_axis_label="Y position (Å)", match_aspect=True)
     if save_svg: fig.output_backend = "svg"
@@ -312,6 +313,7 @@ def main():
         res_ids = [f"{res.id}{res.code}" for res in residues]
         seq = [res.code for res in residues]
         ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
+        cb_pos = np.array([(list(res.atoms(name__regex='CB'))+list(res.atoms(name__regex='HA2')))[0].location for res in residues])
         com = np.array([res.center_of_mass for res in residues])
         rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
         if show_residue_shape == "Circle (const)":
@@ -398,8 +400,10 @@ def main():
                 radii = dict(C=1.88, N=1.64, O=1.46, S=1.77, H=1.0, P=1.87, F=1.56, Cl=1.735, Br=1.978, I=2.094)
                 if scale_factor!=1.0:
                     for k in radii: radii[k] *= scale_factor
-                from shapely.geometry import Point, Polygon
-                from shapely.ops import unary_union
+                from shapely.geometry import Point, Polygon, MultiPolygon
+                from shapely.ops import unary_union, cascaded_union
+                from shapely import concave_hull
+                import itertools
                 x = []
                 y = []
                 for res in chain.residues():
@@ -408,10 +412,21 @@ def main():
                         p = unary_union([Point(a.location[0], a.location[1]).buffer(radii[a.name[0]]) for a in res.atoms()])
                     else:
                         p = unary_union([Point(a.location[0], a.location[1]).buffer(radii[a.name[0]]) for a in set(res.atoms(name__regex='(?!^(CA|O|C|N)$)'))])
-                    if not p: continue
-                    tmp_x, tmp_y = p.exterior.xy
+                    if isinstance(p, MultiPolygon):
+                        tmp_x, tmp_y = concave_hull(p).exterior.xy
+                        #tmp_x = []
+                        #tmp_y = []
+                        #for each_p in p.geoms:
+                        #    each_x, each_y = each_p.exterior.xy
+                        #    tmp_x += each_x.tolist()
+                        #    tmp_y += each_y.tolist()
+                    else:
+                        tmp_x, tmp_y = p.exterior.xy
+                        #tmp_x = tmp_x.tolist()
+                        #tmp_y = tmp_y.tolist()
                     x += [[[tmp_x.tolist()]]]
                     y += [[[tmp_y.tolist()]]]
+
                 return x, y
             mp_x, mp_y = chain_to_bokeh_multi_polygon(chain, scale_factor=circle_size_scale, hide_backbone_in_side_chain_shapes=hide_backbone_in_side_chain_shapes)
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'x':mp_x, 'y':mp_y, 'com_x':com[:,0], 'com_y':com[:,1], 'color':color, 'strand':strand, 'res_id':res_ids})
@@ -453,8 +468,13 @@ def main():
             fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_dash="dotted", line_width=backbone_thickness, line_color=line_color)
 
         if show_residue_shape != 'Blank' and aa_label_size>0:
-            source = ColumnDataSource({'seq':seq, 'com_x':com[:,0], 'com_y':com[:,1]})
-            fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
+            if aa_label_on_cb_instead:
+                source = ColumnDataSource({'seq':seq, 'com_x':cb_pos[:,0], 'com_y':cb_pos[:,1]})
+            else:
+                source = ColumnDataSource({'seq':seq, 'com_x':com[:,0], 'com_y':com[:,1]})
+            #fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
+            labels = LabelSet(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
+            fig.add_layout(labels)
 
         if show_aa_indices:
             aa_mask = [ ri for ri, res in enumerate(residues) if int(res.id.split('.')[-1])%aa_indice_step==0 ]
@@ -473,7 +493,9 @@ def main():
                 pos = ca_pos
                 offset = 0.5*aa_label_size
             source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
-            fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_label_size:d}pt', text_color=aa_label_color_i, text_baseline="middle", text_align="left", level='overlay')
+            #fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_label_size:d}pt', text_color=aa_label_color_i, text_baseline="middle", text_align="left", level='overlay')
+            labels = LabelSet(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_label_size:d}pt', text_color=aa_label_color_i, text_baseline="middle", text_align="left", level='overlay')
+            fig.add_layout(labels)
     
     if show_ssbond:
         if input_mode==0:
