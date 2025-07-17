@@ -144,7 +144,7 @@ def main():
             show_axes = st.checkbox('Show the axes', value=False, key="show_axes")
             show_backbone = st.checkbox('Show backbone of the chains', value=True, key="show_backbone")
             show_ca = st.checkbox('Show Cα of the residues', value=True, key="show_ca")
-            show_aa_indices = st.checkbox('Show amino acid indices', value=False, key="show_aa_indices")
+            show_aa_indices = st.checkbox('Show amino acid indices', value=True, key="show_aa_indices")
             show_gap = st.checkbox('Show gaps in the model', value=True, key="show_gap")
             show_ssbond = st.checkbox('Show disulfide bonds between cysteines', value=True, key="show_ssbond")
             if show_ssbond:
@@ -202,11 +202,14 @@ def main():
             if show_ca:
                 ca_size = int(st.number_input('Cα marker size (pixel)', value=6, min_value=0, step=1, key="ca_size"))
                 ca_color = st.text_input('Cα color(s)', placeholder="red blue", value="black", help="example: red blue", key="ca_color")
-                aa_label_size = int(st.number_input('Amino acid label size (pixel)', value=14, min_value=0, step=1, key="aa_label_size"))
+                aa_label_size = int(st.number_input('Amino acid label size (pixel)', value=12, min_value=0, step=1, key="aa_label_size"))
                 aa_label_color = st.text_input('Amino acid label color(s)', placeholder="red blue", value="black", help="example: red blue", key="aa_label_color")
-                aa_label_on_cb_instead = st.checkbox('Put amino acid labels on Cβ', value=True, key="aa_label_on_cb_instead")
+                aa_label_position_options = {0:"At center of mass", 1:"On Cβ", 2:"Next to backbone"}
+                aa_label_position_option = st.radio(label="Amino acid label position option:", options=list(aa_label_position_options.keys()), format_func=lambda i:aa_label_position_options[i], index=2, horizontal=True, help=help, key="aa_label_position_option")
+                if aa_label_position_option == 2:
+                    aa_label_offset = st.number_input('Amino acid label offset (Å)', value=1.2, min_value=0.0, step=0.1, key="aa_label_offset")
                 if show_aa_indices:
-                    aa_indice_step = int(st.number_input('Show indices every n resiudes', value=10, min_value=1, step=1, key="aa_indice_step"))
+                    aa_indice_step = int(st.number_input('Show indices every n resiudes', value=-1, step=1, key="aa_indice_step", help="Non-positive values: show only N/C terminus."))
                     aa_indice_text = st.text_input("Show indices of these residues:", placeholder="A.13 B.27", value="", help=None, key="aa_indice_text")
 
             backbone_color = ""
@@ -216,10 +219,10 @@ def main():
             arrowhead_length = 0
             if show_backbone:
                 backbone_color = st.text_input('Backbone line color(s)', placeholder="red blue", value="black", help="example: red blue", key="backbone_color")
-                backbone_thickness = int(st.number_input('Backbone line thickness (pixel)', value=3, min_value=0, step=1, key="backbone_thickness"))
+                backbone_thickness = int(st.number_input('Backbone line thickness (pixel)', value=6, min_value=0, step=1, key="backbone_thickness"))
                 strand_color = st.text_input('Strand line color(s)', placeholder="red blue", value="black", help="example: red blue", key="strand_color")
                 strand_thickness = int(st.number_input('Strand line thickness (pixel)', value=6, min_value=0, step=1, key="strand_thickness"))
-                arrowhead_length = int(st.number_input('Arrowhead length (pixel)', value=24, min_value=0, step=1, key="arrowhead_length"))
+                arrowhead_length = int(st.number_input('Arrowhead length (pixel)', value=12, min_value=0, step=1, key="arrowhead_length"))
             plot_width = int(st.number_input('Plot width (pixel)', value=1000, min_value=100, step=10, key="plot_width"))
             #transparent_background = st.checkbox('Set background transparent', value=True, key="transparent_background")
             transparent_background = True
@@ -231,7 +234,7 @@ def main():
             show_qr = False
 
         if show_residue_shape != 'Blank' or label_at_top:
-            color_scheme = color_scheme_container.radio('Choose a coloring scheme:', options=["Charge", "Hydrophobicity", "Cinema", "Lesk", "Clustal", "Custom"], index=5, horizontal=True, key="color_scheme")
+            color_scheme = color_scheme_container.radio('Choose a coloring scheme:', options=["Charge", "Hydrophobicity", "Cinema", "Lesk", "Clustal", "Custom"], index=0, horizontal=True, key="color_scheme")
             if color_scheme == "Custom":
                 example = "white 1-10=red 17=blue L,W=yellow P=cyan"
                 example+= "\nA: white 1-10=red 17=blue L,W=yellow P=cyan"
@@ -353,6 +356,8 @@ def main():
         gap_y0 = []
         gap_x1 = []
         gap_y1 = []
+        
+        backbone_vectors = []
 
         aa_label_color_i = aa_label_colors[ci%len(aa_label_colors)]
         ca_color_i = ca_colors[ci%len(ca_colors)]
@@ -388,6 +393,8 @@ def main():
                     gap_y0.append( ca_pos[i-1,1] )
                     gap_x1.append( ca_pos[i,0] )
                     gap_y1.append( ca_pos[i,1] )
+            if i>0:
+                backbone_vectors.append(np.array([ca_pos[i,0]-ca_pos[i-1,0],ca_pos[i,1]-ca_pos[i-1,1]]))
 
         if show_residue_shape in ['Circle', 'Circle (const)']:
             source = ColumnDataSource({'seq':seq, 'ca_x':ca_pos[:,0], 'ca_y':ca_pos[:,1], 'com_x':com[:,0], 'com_y':com[:,1], 'rog':rog, 'color':color, 'strand':strand, 'res_id':res_ids})
@@ -468,16 +475,31 @@ def main():
             fig.segment(source=source, x0='x0', y0='y0', x1='x1', y1='y1', line_dash="dotted", line_width=backbone_thickness, line_color=line_color)
 
         if show_residue_shape != 'Blank' and aa_label_size>0:
-            if aa_label_on_cb_instead:
-                source = ColumnDataSource({'seq':seq, 'com_x':cb_pos[:,0], 'com_y':cb_pos[:,1]})
-            else:
-                source = ColumnDataSource({'seq':seq, 'com_x':com[:,0], 'com_y':com[:,1]})
-            #fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
-            labels = LabelSet(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
+            if aa_label_position_option == 2:
+                aa_x_offsets = np.array([-backbone_vectors[0][1]/np.linalg.norm(backbone_vectors[0])])
+                aa_y_offsets = np.array([backbone_vectors[0][0]/np.linalg.norm(backbone_vectors[0])])
+                for vi in range(len(backbone_vectors)-1):
+                    curr_offset_vector = backbone_vectors[vi]/np.linalg.norm(backbone_vectors[vi])-backbone_vectors[vi+1]/np.linalg.norm(backbone_vectors[vi+1])
+                    aa_x_offsets = np.append(aa_x_offsets, curr_offset_vector[0]/np.linalg.norm(curr_offset_vector))
+                    aa_y_offsets = np.append(aa_y_offsets, curr_offset_vector[1]/np.linalg.norm(curr_offset_vector))
+                aa_x_offsets = np.append(aa_x_offsets, -backbone_vectors[-1][1]/np.linalg.norm(backbone_vectors[-1]))
+                aa_y_offsets = np.append(aa_y_offsets, backbone_vectors[-1][0]/np.linalg.norm(backbone_vectors[-1]))
+                aa_x_offsets *= aa_label_offset
+                aa_y_offsets *= aa_label_offset
+                source = ColumnDataSource({'seq':seq, 'lab_x':np.array(ca_pos[:,0])+aa_x_offsets, 'lab_y':np.array(ca_pos[:,1])+aa_y_offsets, 'com_x':com[:,0], 'com_y':com[:,1]})
+                #labels = LabelSet(source=source, x='lab_x', y='lab_y', text='seq', x_offset='lab_x_offset', y_offset='lab_y_offset',text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
+            elif aa_label_position_option == 1:
+                source = ColumnDataSource({'seq':seq, 'lab_x':cb_pos[:,0], 'lab_y':cb_pos[:,1], 'com_x':com[:,0], 'com_y':com[:,1]})
+            elif aa_label_position_option == 0:
+                source = ColumnDataSource({'seq':seq, 'lab_x':com[:,0], 'lab_y':com[:,1], 'com_x':com[:,0], 'com_y':com[:,1]})
+                #fig.text(source=source, x='com_x', y='com_y', text='seq', text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
+            labels = LabelSet(source=source, x='lab_x', y='lab_y', text='seq', text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
             fig.add_layout(labels)
 
         if show_aa_indices:
-            aa_mask = [ ri for ri, res in enumerate(residues) if int(res.id.split('.')[-1])%aa_indice_step==0 ]
+            aa_mask = []
+            if aa_indice_step > 0:
+                aa_mask += [ ri for ri, res in enumerate(residues) if int(res.id.split('.')[-1])%aa_indice_step==0 ]
             if 0 not in aa_mask: aa_mask = [0] + aa_mask
             if len(residues)-1 not in aa_mask: aa_mask += [len(residues)-1]
             if aa_indice_text:
@@ -486,12 +508,21 @@ def main():
                 aa_mask += [ri for ri, res in enumerate(residues) if res.id in aa_indices_extra]
             if show_residue_shape != "Blank":
                 aa_indices = [residues[i].id.split('.')[-1] for i in aa_mask]
-                pos = com
+                if show_ca:
+                    if aa_label_position_option == 2:
+                       pos = ca_pos.copy()
+                    elif aa_label_position_option == 1:
+                       pos = cb_pos.copy()
+                    elif aa_label_position_option == 0:
+                       pos = com.copy()
+                else:
+                    pos = com.copy()
                 offset = 0.5*aa_label_size
             else: 
                 aa_indices = [f"{residues[i].code}{residues[i].id.split('.')[-1]}" for i in aa_mask]
                 pos = ca_pos
                 offset = 0.5*aa_label_size
+            
             source = ColumnDataSource({'pos_x':pos[aa_mask,0], 'pos_y':pos[aa_mask,1], 'aa_indices':aa_indices})
             #fig.text(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_label_size:d}pt', text_color=aa_label_color_i, text_baseline="middle", text_align="left", level='overlay')
             labels = LabelSet(source=source, x='pos_x', y='pos_y', text='aa_indices', x_offset=offset, text_font_size=f'{aa_label_size:d}pt', text_color=aa_label_color_i, text_baseline="middle", text_align="left", level='overlay')
