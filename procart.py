@@ -207,7 +207,7 @@ def main():
                 aa_label_position_options = {0:"At center of mass", 1:"On Cβ", 2:"Next to backbone"}
                 aa_label_position_option = st.radio(label="Amino acid label position option:", options=list(aa_label_position_options.keys()), format_func=lambda i:aa_label_position_options[i], index=2, horizontal=True, help=help, key="aa_label_position_option")
                 if aa_label_position_option == 2:
-                    aa_label_offset = st.number_input('Amino acid label offset (Å)', value=1.2, min_value=0.0, step=0.1, key="aa_label_offset")
+                    aa_label_offset = st.number_input('Amino acid label offset (Å)', value=1.8, min_value=0.0, step=0.1, key="aa_label_offset")
                 if show_aa_indices:
                     aa_indice_step = int(st.number_input('Show indices every n resiudes', value=-1, step=1, key="aa_indice_step", help="Non-positive values: show only N/C terminus."))
                     aa_indice_text = st.text_input("Show indices of these residues:", placeholder="A.13 B.27", value="", help=None, key="aa_indice_text")
@@ -219,7 +219,7 @@ def main():
             arrowhead_length = 0
             if show_backbone:
                 backbone_color = st.text_input('Backbone line color(s)', placeholder="red blue", value="black", help="example: red blue", key="backbone_color")
-                backbone_thickness = int(st.number_input('Backbone line thickness (pixel)', value=6, min_value=0, step=1, key="backbone_thickness"))
+                backbone_thickness = int(st.number_input('Backbone line thickness (pixel)', value=4, min_value=0, step=1, key="backbone_thickness"))
                 strand_color = st.text_input('Strand line color(s)', placeholder="red blue", value="black", help="example: red blue", key="strand_color")
                 strand_thickness = int(st.number_input('Strand line thickness (pixel)', value=6, min_value=0, step=1, key="strand_thickness"))
                 arrowhead_length = int(st.number_input('Arrowhead length (pixel)', value=12, min_value=0, step=1, key="arrowhead_length"))
@@ -487,10 +487,6 @@ def main():
                 aa_x_offsets *= aa_label_offset
                 aa_y_offsets *= aa_label_offset
                 bb_vertices = np.column_stack((np.array(ca_pos[:,0]).T+aa_x_offsets, np.array(ca_pos[:,1]).T+aa_y_offsets))
-                print(np.array(ca_pos[:,0])+aa_x_offsets)
-                print(np.shape(np.array(ca_pos[:,0])+aa_x_offsets))
-                print(np.shape(ca_pos))
-                print(np.shape(bb_vertices))
                 source = ColumnDataSource({'seq':seq, 'lab_x':bb_vertices[:,0], 'lab_y':bb_vertices[:,1], 'com_x':com[:,0], 'com_y':com[:,1]})
                 #labels = LabelSet(source=source, x='lab_x', y='lab_y', text='seq', x_offset='lab_x_offset', y_offset='lab_y_offset',text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
             elif aa_label_position_option == 1:
