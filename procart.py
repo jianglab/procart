@@ -486,7 +486,12 @@ def main():
                 aa_y_offsets = np.append(aa_y_offsets, backbone_vectors[-1][0]/np.linalg.norm(backbone_vectors[-1]))
                 aa_x_offsets *= aa_label_offset
                 aa_y_offsets *= aa_label_offset
-                source = ColumnDataSource({'seq':seq, 'lab_x':np.array(ca_pos[:,0])+aa_x_offsets, 'lab_y':np.array(ca_pos[:,1])+aa_y_offsets, 'com_x':com[:,0], 'com_y':com[:,1]})
+                bb_vertices = np.column_stack((np.array(ca_pos[:,0]).T+aa_x_offsets, np.array(ca_pos[:,1]).T+aa_y_offsets))
+                print(np.array(ca_pos[:,0])+aa_x_offsets)
+                print(np.shape(np.array(ca_pos[:,0])+aa_x_offsets))
+                print(np.shape(ca_pos))
+                print(np.shape(bb_vertices))
+                source = ColumnDataSource({'seq':seq, 'lab_x':bb_vertices[:,0], 'lab_y':bb_vertices[:,1], 'com_x':com[:,0], 'com_y':com[:,1]})
                 #labels = LabelSet(source=source, x='lab_x', y='lab_y', text='seq', x_offset='lab_x_offset', y_offset='lab_y_offset',text_font_size=f'{aa_label_size:d}pt', text_color="black", text_baseline="middle", text_align="center", level='overlay')
             elif aa_label_position_option == 1:
                 source = ColumnDataSource({'seq':seq, 'lab_x':cb_pos[:,0], 'lab_y':cb_pos[:,1], 'com_x':com[:,0], 'com_y':com[:,1]})
@@ -510,7 +515,7 @@ def main():
                 aa_indices = [residues[i].id.split('.')[-1] for i in aa_mask]
                 if show_ca:
                     if aa_label_position_option == 2:
-                       pos = ca_pos.copy()
+                       pos = bb_vertices.copy()
                     elif aa_label_position_option == 1:
                        pos = cb_pos.copy()
                     elif aa_label_position_option == 0:
