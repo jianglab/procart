@@ -1,6 +1,7 @@
 atomium
-bokeh==2.4.3
+bokeh
 numpy
 qrcode
 shapely
 streamlit
+streamlit-bokeh

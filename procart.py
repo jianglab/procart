@@ -35,12 +35,12 @@ def import_with_auto_install(packages, scope=locals()):
             import subprocess
             subprocess.call(f'pip install {package_pip_name}', shell=True)
             scope[package_import_name] =  __import__(package_import_name)
-required_packages = "streamlit atomium numpy bokeh shapely".split()
+required_packages = "streamlit atomium numpy bokeh streamlit_bokeh shapely".split()
 import_with_auto_install(required_packages)
 
 import streamlit as st
+from streamlit_bokeh import streamlit_bokeh
 import numpy as np
-np.bool8 = bool  # fix for bokeh 2.4.3
 import atomium
 
 #from memory_profiler import profile
@@ -408,7 +408,7 @@ def main():
                 if scale_factor!=1.0:
                     for k in radii: radii[k] *= scale_factor
                 from shapely.geometry import Point, Polygon, MultiPolygon
-                from shapely.ops import unary_union, cascaded_union
+                from shapely.ops import unary_union
                 from shapely import concave_hull
                 import itertools
                 x = []
@@ -577,7 +577,7 @@ def main():
     fig.x_range=Range1d(min(xmins)-5, max(xmaxs)+5)
     fig.y_range=Range1d(min(ymins)-5, max(ymaxs)+5)
     fig.frame_height = round(fig.frame_width * (fig.y_range.end-fig.y_range.start)/(fig.x_range.end-fig.x_range.start))
-    st.bokeh_chart(fig, use_container_width=False)
+    streamlit_bokeh(fig, use_container_width=False)
 
     if plot_z_dist:
         ymins = []
@@ -798,11 +798,11 @@ def main():
         if len(figs)>1:
             from bokeh.layouts import column
             figs_all = column(children=figs)
-            st.bokeh_chart(figs_all)
+            streamlit_bokeh(figs_all)
         elif len(figs)==1:
             if one_z_plot and len(figs):
                 figs[0].y_range=Range1d(ymin_all-0.5, ymax_all + (len(chain_ids) * (ymax_all-ymin_all) * 0.05 + 0.5)  * label_at_top)
-            st.bokeh_chart(figs[0])
+            streamlit_bokeh(figs[0])
 
     if share_url:
         set_query_parameters()
