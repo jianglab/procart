@@ -316,7 +316,10 @@ def main():
         res_ids = [f"{res.id}{res.code}" for res in residues]
         seq = [res.code for res in residues]
         ca_pos = np.array([list(res.atoms(name__regex='CA'))[0].location for res in residues])
-        cb_pos = np.array([(list(res.atoms(name__regex='CB'))+list(res.atoms(name__regex='HA2')))[0].location for res in residues])
+        try:
+            cb_pos = np.array([(list(res.atoms(name__regex='CB'))+list(res.atoms(name__regex='HA2'))+list(res.atoms(name__regex='O')))[0].location for res in residues]) # fall back to O atom
+        except:
+            st.error("Could not find side chain atoms for deciding the label positions.")
         com = np.array([res.center_of_mass for res in residues])
         rog = circle_size_scale*np.array([res.radius_of_gyration for res in residues])
         if show_residue_shape == "Circle (const)":
